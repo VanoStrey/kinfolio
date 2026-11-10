@@ -5,10 +5,11 @@ import { Badge } from '../common/Badge';
 
 interface PersonCardProps {
   person: Person;
+  giftCount?: number;
   onSelect: (personId: string) => void;
 }
 
-export const PersonCard: React.FC<PersonCardProps> = ({ person, onSelect }) => {
+export const PersonCard: React.FC<PersonCardProps> = ({ person, giftCount = 0, onSelect }) => {
   // Extract initials
   const initials = person.name
     .split(' ')
@@ -24,7 +25,6 @@ export const PersonCard: React.FC<PersonCardProps> = ({ person, onSelect }) => {
   }).format(new Date(person.updatedAt));
 
   const hasAllergies = person.food.allergies && person.food.allergies.length > 0;
-  const activeGifts = person.gifts.filter((g) => g.status === 'idea' || g.status === 'bought');
 
   return (
     <div
@@ -106,10 +106,10 @@ export const PersonCard: React.FC<PersonCardProps> = ({ person, onSelect }) => {
             </div>
           )}
 
-          {activeGifts.length > 0 && (
+          {giftCount > 0 && (
             <div className="flex items-center gap-1 text-secondary">
               <Gift className="w-3 h-3 text-secondary/70" />
-              <span>{activeGifts.length} {activeGifts.length === 1 ? 'gift idea' : 'gifts'}</span>
+              <span>{giftCount} {giftCount === 1 ? 'gift idea' : 'gifts'}</span>
             </div>
           )}
         </div>

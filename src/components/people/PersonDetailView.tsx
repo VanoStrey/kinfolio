@@ -13,34 +13,68 @@ import {
   Archive,
   Lightbulb,
 } from 'lucide-react';
-import { Person } from '../../types/person';
+import { Person, UpdatePersonInput } from '../../types/person';
 import { PersonProfileTab } from '../../types/navigation';
-import { GiftStatus } from '../../types/gift';
+import { GiftIdea, GiftStatus } from '../../types/gift';
+import { Note } from '../../types/note';
 import { Button } from '../common/Button';
 import { Badge } from '../common/Badge';
+import { TagManager } from '../common/TagManager';
+import { CustomFieldsEditor } from './CustomFieldsEditor';
+import { NoteEditorModal } from './NoteEditorModal';
 
 interface PersonDetailViewProps {
   person: Person;
+  gifts: GiftIdea[];
+  notes: Note[];
   onBack: () => void;
   onEditPerson: (person: Person) => void;
   onDeletePerson: (personId: string) => void;
+  onUpdatePerson: (input: UpdatePersonInput) => Promise<Person>;
   onAddGift: (personId: string) => void;
-  onAddNote: (personId: string, noteContent: string) => void;
-  onUpdateGiftStatus?: (giftId: string, newStatus: GiftStatus) => void;
+  onEditGift: (gift: GiftIdea) => void;
+  onDeleteGift: (giftId: string) => void;
+  onUpdateGiftStatus: (giftId: string, status: GiftStatus) => void;
+  onAddNote: (content: string, category?: string) => Promise<Note>;
+  onUpdateNote: (noteId: string, content: string, category?: string) => Promise<Note>;
+  onDeleteNote: (noteId: string) => void;
 }
 
 export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
   person,
+  gifts,
+  notes,
   onBack,
   onEditPerson,
   onDeletePerson,
+  onUpdatePerson,
   onAddGift,
-  onAddNote,
+  onEditGift,
+  onDeleteGift,
   onUpdateGiftStatus,
+  onAddNote,
+  onUpdateNote,
+  onDeleteNote,
 }) => {
   const [activeTab, setActiveTab] = useState<PersonProfileTab>('details');
+
+  // Quick note inline capture state
   const [newNoteText, setNewNoteText] = useState('');
-  const [isAddingNote, setIsAddingNote] = useState(false);
+  const [isAddingQuickNote, setIsAddingQuickNote] = useState(false);
+
+  // Note editing modal
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
+
+  // Sizes editing mode
+  const [isEditingSizes, setIsEditingSizes] = useState(false);
+  const [clothingSize, setClothingSize] = useState(person.details.clothingSize || '');
+  const [shoeSize, setShoeSize] = useState(person.details.shoeSize || '');
+  const [ringSize, setRingSize] = useState(person.details.ringSize || '');
+  const [height, setHeight] = useState(person.details.height || '');
+
+  // Food note state
+  const [foodNote, setFoodNote] = useState(person.food.notes || '');
+  const [isEditingFoodNote, setIsEditingFoodNote] = useState(false);
 
   const initials = person.name
     .split(' ')
@@ -55,24 +89,49 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
     year: 'numeric',
   }).format(new Date(person.updatedAt));
 
+  const hasAllergies = person.food.allergies && person.food.allergies.length > 0;
+
   const tabs: { id: PersonProfileTab; label: string; count?: number }[] = [
     { id: 'details', label: 'Details' },
     { id: 'preferences', label: 'Preferences' },
     {
       id: 'food',
       label: 'Food',
-      count: person.food.allergies.length > 0 ? person.food.allergies.length : undefined,
+      count: hasAllergies ? person.food.allergies.length : undefined,
     },
-    { id: 'gifts', label: 'Gifts', count: person.gifts.length },
-    { id: 'notes', label: 'Notes', count: person.notes.length },
+    { id: 'gifts', label: 'Gifts', count: gifts.length },
+    { id: 'notes', label: 'Notes', count: notes.length },
   ];
 
-  const handleCreateNote = (e: React.FormEvent) => {
+  const handleSaveSizes = async () => {
+    await onUpdatePerson({
+      details: {
+        ...person.details,
+        clothingSize: clothingSize.trim() || undefined,
+        shoeSize: shoeSize.trim() || undefined,
+        ringSize: ringSize.trim() || undefined,
+        height: height.trim() || undefined,
+      },
+    });
+    setIsEditingSizes(false);
+  };
+
+  const handleSaveFoodNote = async () => {
+    await onUpdatePerson({
+      food: {
+        ...person.food,
+        notes: foodNote.trim() || undefined,
+      },
+    });
+    setIsEditingFoodNote(false);
+  };
+
+  const handleCreateQuickNote = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newNoteText.trim()) return;
-    onAddNote(person.id, newNoteText.trim());
+    await onAddNote(newNoteText.trim());
     setNewNoteText('');
-    setIsAddingNote(false);
+    setIsAddingQuickNote(false);
   };
 
   const getStatusBadge = (status: GiftStatus) => {
@@ -123,14 +182,14 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
             onClick={() => onEditPerson(person)}
             icon={<Edit3 className="w-3.5 h-3.5" />}
           >
-            Edit
+            Edit Profile
           </Button>
           <Button
             size="sm"
             variant="ghost"
             className="text-status-danger-text hover:bg-red-50"
             onClick={() => {
-              if (window.confirm(`Are you sure you want to remove ${person.name}?`)) {
+              if (window.confirm(`Are you sure you want to move ${person.name} to trash?`)) {
                 onDeletePerson(person.id);
               }
             }}
@@ -201,8 +260,8 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
                 {tab.count !== undefined && (
                   <span
                     className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                      tab.id === 'food' && person.food.allergies.length > 0
-                        ? 'bg-red-100 text-red-700'
+                      tab.id === 'food' && hasAllergies
+                        ? 'bg-red-100 text-red-700 font-bold'
                         : isActive
                         ? 'bg-primary/10 text-primary'
                         : 'bg-canvas text-secondary'
@@ -218,305 +277,310 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
       </div>
 
       {/* Tab Contents */}
-      <div className="min-h-[360px]">
+      <div className="min-h-[380px]">
         {/* DETAILS TAB */}
         {activeTab === 'details' && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-surface border border-border rounded-lg p-4">
-                <span className="text-xs text-secondary font-medium block">Clothing Size</span>
-                <p className="text-base font-semibold text-primary mt-1">
-                  {person.details.clothingSize || '—'}
-                </p>
+            {/* Standard Sizes Grid */}
+            <div className="bg-surface border border-border rounded-xl p-5 shadow-subtle space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-border-subtle">
+                <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider">
+                  Body Measurements & Standard Sizes
+                </h3>
+                {!isEditingSizes ? (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setClothingSize(person.details.clothingSize || '');
+                      setShoeSize(person.details.shoeSize || '');
+                      setRingSize(person.details.ringSize || '');
+                      setHeight(person.details.height || '');
+                      setIsEditingSizes(true);
+                    }}
+                    icon={<Edit3 className="w-3 h-3" />}
+                  >
+                    Edit Sizes
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsEditingSizes(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={handleSaveSizes}
+                    >
+                      Save Sizes
+                    </Button>
+                  </div>
+                )}
               </div>
 
-              <div className="bg-surface border border-border rounded-lg p-4">
-                <span className="text-xs text-secondary font-medium block">Shoe Size</span>
-                <p className="text-base font-semibold text-primary mt-1">
-                  {person.details.shoeSize || '—'}
-                </p>
-              </div>
-
-              <div className="bg-surface border border-border rounded-lg p-4">
-                <span className="text-xs text-secondary font-medium block">Ring Size</span>
-                <p className="text-base font-semibold text-primary mt-1">
-                  {person.details.ringSize || '—'}
-                </p>
-              </div>
-
-              <div className="bg-surface border border-border rounded-lg p-4">
-                <span className="text-xs text-secondary font-medium block">Height</span>
-                <p className="text-base font-semibold text-primary mt-1">
-                  {person.details.height || '—'}
-                </p>
-              </div>
+              {!isEditingSizes ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div className="bg-canvas border border-border-subtle rounded-lg p-3.5">
+                    <span className="text-[11px] text-secondary font-medium block">Clothing</span>
+                    <p className="text-sm font-semibold text-primary mt-0.5">
+                      {person.details.clothingSize || '—'}
+                    </p>
+                  </div>
+                  <div className="bg-canvas border border-border-subtle rounded-lg p-3.5">
+                    <span className="text-[11px] text-secondary font-medium block">Shoe</span>
+                    <p className="text-sm font-semibold text-primary mt-0.5">
+                      {person.details.shoeSize || '—'}
+                    </p>
+                  </div>
+                  <div className="bg-canvas border border-border-subtle rounded-lg p-3.5">
+                    <span className="text-[11px] text-secondary font-medium block">Ring</span>
+                    <p className="text-sm font-semibold text-primary mt-0.5">
+                      {person.details.ringSize || '—'}
+                    </p>
+                  </div>
+                  <div className="bg-canvas border border-border-subtle rounded-lg p-3.5">
+                    <span className="text-[11px] text-secondary font-medium block">Height</span>
+                    <p className="text-sm font-semibold text-primary mt-0.5">
+                      {person.details.height || '—'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <label className="text-[11px] text-secondary font-medium block mb-1">Clothing Size</label>
+                    <input
+                      type="text"
+                      value={clothingSize}
+                      onChange={(e) => setClothingSize(e.target.value)}
+                      placeholder="e.g. S / EU 36"
+                      className="w-full bg-canvas border border-border rounded-md px-2.5 py-1.5 text-xs text-primary focus:outline-none focus:border-primary/60"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-secondary font-medium block mb-1">Shoe Size</label>
+                    <input
+                      type="text"
+                      value={shoeSize}
+                      onChange={(e) => setShoeSize(e.target.value)}
+                      placeholder="e.g. EU 38"
+                      className="w-full bg-canvas border border-border rounded-md px-2.5 py-1.5 text-xs text-primary focus:outline-none focus:border-primary/60"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-secondary font-medium block mb-1">Ring Size</label>
+                    <input
+                      type="text"
+                      value={ringSize}
+                      onChange={(e) => setRingSize(e.target.value)}
+                      placeholder="e.g. 16.5 mm"
+                      className="w-full bg-canvas border border-border rounded-md px-2.5 py-1.5 text-xs text-primary focus:outline-none focus:border-primary/60"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-secondary font-medium block mb-1">Height</label>
+                    <input
+                      type="text"
+                      value={height}
+                      onChange={(e) => setHeight(e.target.value)}
+                      placeholder="e.g. 172 cm"
+                      className="w-full bg-canvas border border-border rounded-md px-2.5 py-1.5 text-xs text-primary focus:outline-none focus:border-primary/60"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Custom Fields */}
-            {person.details.customFields && person.details.customFields.length > 0 && (
-              <div className="bg-surface border border-border rounded-xl p-5">
-                <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">
-                  Additional Measurements & Custom Fields
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                  {person.details.customFields.map((field) => (
-                    <div key={field.id} className="bg-canvas border border-border-subtle rounded-md p-3">
-                      <span className="text-[11px] text-secondary font-medium block">{field.label}</span>
-                      <p className="text-xs font-medium text-primary mt-0.5">{field.value}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Custom Measurements & Fields Editor */}
+            <CustomFieldsEditor
+              fields={person.details.customFields || []}
+              onChange={(updatedCustomFields) => {
+                onUpdatePerson({
+                  details: {
+                    ...person.details,
+                    customFields: updatedCustomFields,
+                  },
+                });
+              }}
+            />
           </div>
         )}
 
         {/* PREFERENCES TAB */}
         {activeTab === 'preferences' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Scents / Fragrances */}
-            <div className="bg-surface border border-border rounded-xl p-5">
-              <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">
-                Scents & Fragrances
-              </h3>
-              {person.preferences.scents.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {person.preferences.scents.map((scent, i) => (
-                    <span
-                      key={i}
-                      className="text-xs bg-canvas text-primary px-3 py-1.5 rounded-md border border-border-subtle font-medium"
-                    >
-                      {scent}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-muted">No scents or perfumes recorded.</p>
-              )}
-            </div>
+            <TagManager
+              title="Scents & Fragrances"
+              hint="Perfumes, candles, colognes, or home aromas"
+              tags={person.preferences.scents || []}
+              placeholder="e.g. Diptyque Fleur de Peau"
+              onChange={(scents) => onUpdatePerson({ preferences: { ...person.preferences, scents } })}
+            />
 
-            {/* Brands */}
-            <div className="bg-surface border border-border rounded-xl p-5">
-              <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">
-                Favorite Brands
-              </h3>
-              {person.preferences.brands.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {person.preferences.brands.map((brand, i) => (
-                    <span
-                      key={i}
-                      className="text-xs bg-canvas text-primary px-3 py-1.5 rounded-md border border-border-subtle font-medium"
-                    >
-                      {brand}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-muted">No brands recorded.</p>
-              )}
-            </div>
+            <TagManager
+              title="Favorite Brands"
+              hint="Fashion, lifestyle, or homeware brands"
+              tags={person.preferences.brands || []}
+              placeholder="e.g. Aesop, COS, Arket"
+              onChange={(brands) => onUpdatePerson({ preferences: { ...person.preferences, brands } })}
+            />
 
-            {/* Colors */}
-            <div className="bg-surface border border-border rounded-xl p-5">
-              <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">
-                Favorite Colors
-              </h3>
-              {person.preferences.colors.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {person.preferences.colors.map((color, i) => (
-                    <span
-                      key={i}
-                      className="text-xs bg-canvas text-primary px-3 py-1.5 rounded-md border border-border-subtle font-medium"
-                    >
-                      {color}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-muted">No colors recorded.</p>
-              )}
-            </div>
+            <TagManager
+              title="Favorite Colors"
+              hint="Tones and color palettes they wear or decorate with"
+              tags={person.preferences.colors || []}
+              placeholder="e.g. Sage Green, Oatmeal"
+              onChange={(colors) => onUpdatePerson({ preferences: { ...person.preferences, colors } })}
+            />
 
-            {/* Hobbies */}
-            <div className="bg-surface border border-border rounded-xl p-5">
-              <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">
-                Hobbies & Passions
-              </h3>
-              {person.preferences.hobbies.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {person.preferences.hobbies.map((hobby, i) => (
-                    <span
-                      key={i}
-                      className="text-xs bg-canvas text-primary px-3 py-1.5 rounded-md border border-border-subtle font-medium"
-                    >
-                      {hobby}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-muted">No hobbies recorded.</p>
-              )}
-            </div>
+            <TagManager
+              title="Hobbies & Passions"
+              hint="Activities, sports, crafts, and interests"
+              tags={person.preferences.hobbies || []}
+              placeholder="e.g. 35mm photography, ceramics"
+              onChange={(hobbies) => onUpdatePerson({ preferences: { ...person.preferences, hobbies } })}
+            />
 
-            {/* Likes */}
-            <div className="bg-surface border border-border rounded-xl p-5">
-              <h3 className="text-xs font-semibold text-emerald-800 uppercase tracking-wider mb-3">
-                Things They Love
-              </h3>
-              {person.preferences.likes.length > 0 ? (
-                <ul className="space-y-1.5">
-                  {person.preferences.likes.map((like, i) => (
-                    <li key={i} className="text-xs text-primary flex items-start gap-2">
-                      <span className="text-emerald-600 font-bold">•</span>
-                      <span>{like}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-xs text-muted">None specified.</p>
-              )}
-            </div>
+            <TagManager
+              title="Things They Love"
+              hint="General likes, styles, and comforts"
+              badgeVariant="success"
+              tags={person.preferences.likes || []}
+              placeholder="e.g. Linen shirts, oat lattes"
+              onChange={(likes) => onUpdatePerson({ preferences: { ...person.preferences, likes } })}
+            />
 
-            {/* Dislikes */}
-            <div className="bg-surface border border-border rounded-xl p-5">
-              <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">
-                Things to Avoid / Dislikes
-              </h3>
-              {person.preferences.dislikes.length > 0 ? (
-                <ul className="space-y-1.5">
-                  {person.preferences.dislikes.map((dislike, i) => (
-                    <li key={i} className="text-xs text-secondary flex items-start gap-2">
-                      <span className="text-muted font-bold">•</span>
-                      <span>{dislike}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-xs text-muted">None specified.</p>
-              )}
-            </div>
+            <TagManager
+              title="Things to Avoid / Dislikes"
+              hint="Materials, cuts, or items they do not enjoy"
+              tags={person.preferences.dislikes || []}
+              placeholder="e.g. Synthetic fabrics, neon colors"
+              onChange={(dislikes) => onUpdatePerson({ preferences: { ...person.preferences, dislikes } })}
+            />
           </div>
         )}
 
         {/* FOOD TAB — Strict Medical & Preference Distinction */}
         {activeTab === 'food' && (
-          <div className="space-y-4">
-            {/* Allergies Warning Card */}
-            <div className={`p-5 rounded-xl border ${
-              person.food.allergies.length > 0
-                ? 'bg-red-50/50 border-red-200'
-                : 'bg-surface border-border'
-            }`}>
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className={`w-4 h-4 ${person.food.allergies.length > 0 ? 'text-red-700' : 'text-secondary'}`} />
-                <h3 className={`text-xs font-bold uppercase tracking-wider ${
-                  person.food.allergies.length > 0 ? 'text-red-800' : 'text-secondary'
-                }`}>
+          <div className="space-y-5">
+            {/* Medical Allergies (Top Priority Safety Banner) */}
+            <div className="bg-red-50/50 border border-red-200 rounded-xl p-5 shadow-subtle space-y-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-700" />
+                <h3 className="text-xs font-bold text-red-900 uppercase tracking-wider">
                   Medical Allergies (High Priority)
                 </h3>
               </div>
-              {person.food.allergies.length > 0 ? (
-                <div className="space-y-1.5 mt-2">
-                  {person.food.allergies.map((allergy, i) => (
-                    <div key={i} className="text-xs font-semibold text-red-900 bg-white/80 border border-red-200 px-3 py-2 rounded-md">
-                      ⚠️ {allergy}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-secondary">No known medical allergies.</p>
-              )}
+              <p className="text-[11px] text-red-800 leading-relaxed">
+                Critical medical allergies. Always distinguish from preferences to prevent anaphylaxis and contamination.
+              </p>
+
+              <TagManager
+                title="Active Medical Allergies"
+                isAllergy={true}
+                tags={person.food.allergies || []}
+                placeholder="e.g. Peanuts (Anaphylaxis risk)"
+                onChange={(allergies) => onUpdatePerson({ food: { ...person.food, allergies } })}
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Intolerances */}
-              <div className="bg-surface border border-border rounded-xl p-5">
-                <h3 className="text-xs font-semibold text-amber-900 uppercase tracking-wider mb-2">
-                  Food Intolerances & Sensitivities
-                </h3>
-                {person.food.intolerances.length > 0 ? (
-                  <div className="space-y-1.5">
-                    {person.food.intolerances.map((item, i) => (
-                      <span
-                        key={i}
-                        className="inline-block text-xs bg-amber-50 text-amber-950 border border-amber-200/70 px-2.5 py-1 rounded mr-2 mb-1 font-medium"
-                      >
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted">No intolerances recorded.</p>
-                )}
-              </div>
+              <TagManager
+                title="Intolerances & Sensitivities"
+                hint="e.g. Lactose, mild gluten sensitivity"
+                badgeVariant="warning"
+                tags={person.food.intolerances || []}
+                placeholder="e.g. Lactose"
+                onChange={(intolerances) => onUpdatePerson({ food: { ...person.food, intolerances } })}
+              />
 
-              {/* Dietary Restrictions */}
-              <div className="bg-surface border border-border rounded-xl p-5">
-                <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-2">
-                  Dietary Restrictions (Lifestyle / Ethical)
-                </h3>
-                {person.food.dietaryRestrictions.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {person.food.dietaryRestrictions.map((item, i) => (
-                      <span
-                        key={i}
-                        className="text-xs bg-canvas text-primary border border-border-subtle px-2.5 py-1 rounded font-medium"
-                      >
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted">No dietary restrictions.</p>
-                )}
-              </div>
+              <TagManager
+                title="Dietary Restrictions"
+                hint="Ethical or lifestyle diets (e.g. Vegetarian, Halal)"
+                tags={person.food.dietaryRestrictions || []}
+                placeholder="e.g. Pescatarian"
+                onChange={(dietaryRestrictions) => onUpdatePerson({ food: { ...person.food, dietaryRestrictions } })}
+              />
 
-              {/* Favorite Foods */}
-              <div className="bg-surface border border-border rounded-xl p-5">
-                <h3 className="text-xs font-semibold text-emerald-800 uppercase tracking-wider mb-2">
-                  Favorite Foods & Dishes
-                </h3>
-                {person.food.favoriteFoods.length > 0 ? (
-                  <ul className="space-y-1">
-                    {person.food.favoriteFoods.map((item, i) => (
-                      <li key={i} className="text-xs text-primary flex items-start gap-2">
-                        <span className="text-emerald-600 font-bold">•</span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-xs text-muted">No favorite dishes listed.</p>
-                )}
-              </div>
+              <TagManager
+                title="Favorite Foods & Dishes"
+                badgeVariant="success"
+                tags={person.food.favoriteFoods || []}
+                placeholder="e.g. Truffle risotto, Shakshuka"
+                onChange={(favoriteFoods) => onUpdatePerson({ food: { ...person.food, favoriteFoods } })}
+              />
 
-              {/* Disliked Foods */}
-              <div className="bg-surface border border-border rounded-xl p-5">
-                <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-2">
-                  Disliked Foods
-                </h3>
-                {person.food.dislikedFoods.length > 0 ? (
-                  <ul className="space-y-1">
-                    {person.food.dislikedFoods.map((item, i) => (
-                      <li key={i} className="text-xs text-secondary flex items-start gap-2">
-                        <span className="text-muted font-bold">•</span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-xs text-muted">No disliked foods listed.</p>
-                )}
-              </div>
+              <TagManager
+                title="Disliked Foods"
+                hint="Personal distaste or ingredients they avoid"
+                tags={person.food.dislikedFoods || []}
+                placeholder="e.g. Cilantro, Blue cheese"
+                onChange={(dislikedFoods) => onUpdatePerson({ food: { ...person.food, dislikedFoods } })}
+              />
             </div>
 
-            {/* Additional Food Notes */}
-            {person.food.notes && (
-              <div className="bg-surface border border-border rounded-xl p-4 text-xs text-secondary">
-                <span className="font-semibold text-primary block mb-1">Kitchen & Dining Note:</span>
-                {person.food.notes}
+            {/* Dining / Kitchen Advice Note */}
+            <div className="bg-surface border border-border rounded-xl p-5 shadow-subtle space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-border-subtle">
+                <div>
+                  <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider">
+                    Kitchen & Dining Advice Note
+                  </h3>
+                  <p className="text-[11px] text-muted mt-0.5">
+                    Tips for cooking for them, restaurant ordering, or coffee preferences.
+                  </p>
+                </div>
+
+                {!isEditingFoodNote ? (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setFoodNote(person.food.notes || '');
+                      setIsEditingFoodNote(true);
+                    }}
+                    icon={<Edit3 className="w-3 h-3" />}
+                  >
+                    Edit Note
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsEditingFoodNote(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={handleSaveFoodNote}
+                    >
+                      Save Note
+                    </Button>
+                  </div>
+                )}
               </div>
-            )}
+
+              {!isEditingFoodNote ? (
+                <p className="text-xs text-primary leading-relaxed whitespace-pre-wrap">
+                  {person.food.notes || <span className="text-muted italic">No kitchen notes added yet.</span>}
+                </p>
+              ) : (
+                <textarea
+                  value={foodNote}
+                  onChange={(e) => setFoodNote(e.target.value)}
+                  placeholder="e.g. Always check with restaurant staff regarding peanut oil..."
+                  rows={3}
+                  className="w-full bg-canvas border border-border rounded-md p-3 text-xs text-primary placeholder:text-muted focus:outline-none focus:border-primary/60"
+                />
+              )}
+            </div>
           </div>
         )}
 
@@ -525,7 +589,7 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
           <div className="space-y-4">
             <div className="flex items-center justify-between pb-2">
               <span className="text-xs text-secondary">
-                {person.gifts.length} {person.gifts.length === 1 ? 'gift idea' : 'gift ideas'} recorded
+                {gifts.length} {gifts.length === 1 ? 'gift idea' : 'gift ideas'} recorded
               </span>
               <Button
                 size="sm"
@@ -537,9 +601,9 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
               </Button>
             </div>
 
-            {person.gifts.length > 0 ? (
+            {gifts.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {person.gifts.map((gift) => (
+                {gifts.map((gift) => (
                   <div
                     key={gift.id}
                     className="bg-surface border border-border rounded-xl p-5 shadow-subtle flex flex-col justify-between"
@@ -550,16 +614,27 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
                         {getStatusBadge(gift.status)}
                       </div>
 
+                      {/* Optional Gift Image */}
+                      {gift.imageUrl && (
+                        <div className="mt-3 rounded-lg overflow-hidden border border-border-subtle bg-canvas max-h-40 flex items-center justify-center">
+                          <img
+                            src={gift.imageUrl}
+                            alt={gift.title}
+                            className="w-full h-40 object-cover"
+                          />
+                        </div>
+                      )}
+
                       {gift.description && (
-                        <p className="text-xs text-secondary mt-2 leading-relaxed">
+                        <p className="text-xs text-secondary mt-2.5 leading-relaxed">
                           {gift.description}
                         </p>
                       )}
 
-                      <div className="flex flex-wrap items-center gap-3 mt-4 text-xs">
+                      <div className="flex flex-wrap items-center gap-2.5 mt-4 text-xs">
                         {gift.price !== undefined && (
                           <span className="font-semibold text-primary bg-canvas px-2 py-0.5 rounded border border-border-subtle">
-                            {gift.currency || '$'}{gift.price}
+                            {gift.currency || '€'}{gift.price}
                           </span>
                         )}
                         {gift.occasion && (
@@ -581,27 +656,45 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
                       </div>
                     </div>
 
-                    {/* Quick Status Changer */}
-                    {onUpdateGiftStatus && (
-                      <div className="mt-4 pt-3 border-t border-border-subtle flex items-center justify-between text-xs text-secondary">
-                        <span>Status:</span>
-                        <div className="flex items-center gap-1">
-                          {(['idea', 'bought', 'given', 'archived'] as GiftStatus[]).map((st) => (
-                            <button
-                              key={st}
-                              onClick={() => onUpdateGiftStatus(gift.id, st)}
-                              className={`text-[11px] px-2 py-0.5 rounded capitalize transition-colors ${
-                                gift.status === st
-                                  ? 'bg-primary text-white font-medium'
-                                  : 'text-secondary hover:text-primary hover:bg-canvas'
-                              }`}
-                            >
-                              {st}
-                            </button>
-                          ))}
-                        </div>
+                    {/* Status Changer & Actions */}
+                    <div className="mt-4 pt-3 border-t border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-1">
+                        {(['idea', 'bought', 'given', 'archived'] as GiftStatus[]).map((st) => (
+                          <button
+                            key={st}
+                            onClick={() => onUpdateGiftStatus(gift.id, st)}
+                            className={`text-[10px] px-2 py-0.5 rounded capitalize transition-colors ${
+                              gift.status === st
+                                ? 'bg-primary text-white font-medium'
+                                : 'text-secondary hover:text-primary hover:bg-canvas'
+                            }`}
+                          >
+                            {st}
+                          </button>
+                        ))}
                       </div>
-                    )}
+
+                      <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                        <button
+                          onClick={() => onEditGift(gift)}
+                          className="text-secondary hover:text-primary p-1 rounded hover:bg-canvas"
+                          title="Edit gift"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`Delete "${gift.title}"?`)) {
+                              onDeleteGift(gift.id);
+                            }
+                          }}
+                          className="text-secondary hover:text-red-600 p-1 rounded hover:bg-canvas"
+                          title="Delete gift"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -610,7 +703,7 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
                 <GiftIcon className="w-6 h-6 text-secondary mx-auto mb-2 opacity-50" />
                 <p className="text-xs font-medium text-primary">No gift ideas yet for {person.name}</p>
                 <p className="text-[11px] text-secondary mt-0.5 mb-4">
-                  Save wishlist items, links, and ideas for upcoming celebrations.
+                  Save wishlist items, links, photos, and ideas for upcoming celebrations.
                 </p>
                 <Button size="sm" variant="secondary" onClick={() => onAddGift(person.id)}>
                   Add First Gift
@@ -625,13 +718,13 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
           <div className="space-y-4">
             <div className="flex items-center justify-between pb-2">
               <span className="text-xs text-secondary">
-                Free-form observations, memories, and personal notes
+                Free-form observations, memories, and personal notes ({notes.length})
               </span>
-              {!isAddingNote && (
+              {!isAddingQuickNote && (
                 <Button
                   size="sm"
                   variant="primary"
-                  onClick={() => setIsAddingNote(true)}
+                  onClick={() => setIsAddingQuickNote(true)}
                   icon={<Plus className="w-3.5 h-3.5" />}
                 >
                   Add Note
@@ -640,9 +733,9 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
             </div>
 
             {/* Inline fast capture note box */}
-            {isAddingNote && (
+            {isAddingQuickNote && (
               <form
-                onSubmit={handleCreateNote}
+                onSubmit={handleCreateQuickNote}
                 className="bg-surface border border-border-strong rounded-xl p-4 shadow-subtle space-y-3"
               >
                 <label className="text-xs font-semibold text-primary block">New Note</label>
@@ -660,7 +753,7 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
                     variant="ghost"
                     type="button"
                     onClick={() => {
-                      setIsAddingNote(false);
+                      setIsAddingQuickNote(false);
                       setNewNoteText('');
                     }}
                   >
@@ -673,9 +766,9 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
               </form>
             )}
 
-            {person.notes.length > 0 ? (
+            {notes.length > 0 ? (
               <div className="space-y-3">
-                {person.notes.map((note) => {
+                {notes.map((note) => {
                   const noteDate = new Intl.DateTimeFormat('en', {
                     month: 'short',
                     day: 'numeric',
@@ -685,24 +778,52 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
                   return (
                     <div
                       key={note.id}
-                      className="bg-surface border border-border rounded-xl p-5 shadow-subtle text-xs"
+                      className="bg-surface border border-border rounded-xl p-5 shadow-subtle text-xs flex flex-col justify-between"
                     >
-                      <p className="text-primary leading-relaxed whitespace-pre-wrap">{note.content}</p>
-                      <span className="text-[10px] text-muted block mt-3 pt-2 border-t border-border-subtle">
-                        Recorded on {noteDate}
-                      </span>
+                      <div>
+                        {note.category && (
+                          <span className="inline-block text-[10px] uppercase font-semibold text-secondary tracking-wider mb-2 bg-canvas px-2 py-0.5 rounded border border-border-subtle">
+                            {note.category}
+                          </span>
+                        )}
+                        <p className="text-primary leading-relaxed whitespace-pre-wrap">{note.content}</p>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-border-subtle flex items-center justify-between text-[11px] text-muted">
+                        <span>Recorded on {noteDate}</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setEditingNote(note)}
+                            className="p-1 text-secondary hover:text-primary rounded hover:bg-canvas"
+                            title="Edit note"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (window.confirm('Delete this note?')) {
+                                onDeleteNote(note.id);
+                              }
+                            }}
+                            className="p-1 text-secondary hover:text-red-600 rounded hover:bg-canvas"
+                            title="Delete note"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              !isAddingNote && (
+              !isAddingQuickNote && (
                 <div className="text-center py-12 bg-surface/50 rounded-xl border border-dashed border-border p-6">
                   <p className="text-xs font-medium text-primary">No notes yet</p>
                   <p className="text-[11px] text-secondary mt-0.5 mb-4">
                     Write down memories, things they mentioned wanting to try, or small observations.
                   </p>
-                  <Button size="sm" variant="secondary" onClick={() => setIsAddingNote(true)}>
+                  <Button size="sm" variant="secondary" onClick={() => setIsAddingQuickNote(true)}>
                     Add First Note
                   </Button>
                 </div>
@@ -711,6 +832,19 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Note Editor Modal */}
+      <NoteEditorModal
+        isOpen={!!editingNote}
+        onClose={() => setEditingNote(null)}
+        initialNote={editingNote}
+        onSave={async (content, category) => {
+          if (editingNote) {
+            await onUpdateNote(editingNote.id, content, category);
+            setEditingNote(null);
+          }
+        }}
+      />
     </div>
   );
 };

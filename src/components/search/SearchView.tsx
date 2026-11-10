@@ -1,143 +1,47 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, User, Gift, FileText, AlertTriangle, ArrowRight } from 'lucide-react';
-import { Person } from '../../types/person';
+import { PersonProfileTab } from '../../types/navigation';
+import { searchAllRecords, SearchResultItem } from '../../services/searchService';
 import { Badge } from '../common/Badge';
 
 interface SearchViewProps {
-  people: Person[];
-  onSelectPerson: (personId: string) => void;
+  onSelectPerson: (personId: string, initialTab?: PersonProfileTab) => void;
 }
 
-interface SearchMatch {
-  person: Person;
-  matchCategory: 'Person' | 'Sizes & Details' | 'Preferences' | 'Food & Allergies' | 'Gift' | 'Note';
-  matchSnippet: string;
-}
-
-export const SearchView: React.FC<SearchViewProps> = ({ people, onSelectPerson }) => {
+export const SearchView: React.FC<SearchViewProps> = ({ onSelectPerson }) => {
   const [query, setQuery] = useState('');
+  const [results, setResults] = useState<SearchResultItem[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
-  const searchResults = useMemo<SearchMatch[]>(() => {
-    if (!query.trim() || query.length < 2) return [];
+  useEffect(() => {
+    let isCancelled = false;
 
-    const q = query.toLowerCase().trim();
-    const matches: SearchMatch[] = [];
-
-    people.forEach((p) => {
-      // 1. Name & Relationship
-      if (p.name.toLowerCase().includes(q) || (p.relationship && p.relationship.toLowerCase().includes(q))) {
-        matches.push({
-          person: p,
-          matchCategory: 'Person',
-          matchSnippet: `${p.name} ${p.relationship ? `(${p.relationship})` : ''}`,
-        });
-      }
-
-      // 2. Details / Sizes
-      const sizesText = `${p.details.clothingSize || ''} ${p.details.shoeSize || ''} ${p.details.ringSize || ''} ${p.details.height || ''}`;
-      if (sizesText.toLowerCase().includes(q)) {
-        matches.push({
-          person: p,
-          matchCategory: 'Sizes & Details',
-          matchSnippet: `Sizes: Clothing (${p.details.clothingSize || '—'}), Shoes (${p.details.shoeSize || '—'}), Ring (${p.details.ringSize || '—'})`,
-        });
-      }
-      p.details.customFields.forEach((cf) => {
-        if (cf.label.toLowerCase().includes(q) || cf.value.toLowerCase().includes(q)) {
-          matches.push({
-            person: p,
-            matchCategory: 'Sizes & Details',
-            matchSnippet: `${cf.label}: ${cf.value}`,
-          });
+    if (query.trim().length >= 2) {
+      setIsSearching(true);
+      searchAllRecords(query).then((items) => {
+        if (!isCancelled) {
+          setResults(items);
+          setIsSearching(false);
         }
       });
+    } else {
+      setResults([]);
+      setIsSearching(false);
+    }
 
-      // 3. Preferences (scents, brands, colors, hobbies, likes)
-      const allPrefs = [
-        ...p.preferences.scents,
-        ...p.preferences.brands,
-        ...p.preferences.colors,
-        ...p.preferences.hobbies,
-        ...p.preferences.likes,
-        ...p.preferences.dislikes,
-      ];
-      allPrefs.forEach((item) => {
-        if (item.toLowerCase().includes(q)) {
-          matches.push({
-            person: p,
-            matchCategory: 'Preferences',
-            matchSnippet: item,
-          });
-        }
-      });
+    return () => {
+      isCancelled = true;
+    };
+  }, [query]);
 
-      // 4. Food & Allergies
-      p.food.allergies.forEach((allergy) => {
-        if (allergy.toLowerCase().includes(q)) {
-          matches.push({
-            person: p,
-            matchCategory: 'Food & Allergies',
-            matchSnippet: `Medical Allergy: ${allergy}`,
-          });
-        }
-      });
-      p.food.intolerances.forEach((intol) => {
-        if (intol.toLowerCase().includes(q)) {
-          matches.push({
-            person: p,
-            matchCategory: 'Food & Allergies',
-            matchSnippet: `Intolerance: ${intol}`,
-          });
-        }
-      });
-      p.food.favoriteFoods.forEach((ff) => {
-        if (ff.toLowerCase().includes(q)) {
-          matches.push({
-            person: p,
-            matchCategory: 'Food & Allergies',
-            matchSnippet: `Favorite food: ${ff}`,
-          });
-        }
-      });
-
-      // 5. Gifts
-      p.gifts.forEach((g) => {
-        if (
-          g.title.toLowerCase().includes(q) ||
-          (g.description && g.description.toLowerCase().includes(q)) ||
-          (g.occasion && g.occasion.toLowerCase().includes(q))
-        ) {
-          matches.push({
-            person: p,
-            matchCategory: 'Gift',
-            matchSnippet: `Gift Idea: "${g.title}" (${g.status})`,
-          });
-        }
-      });
-
-      // 6. Notes
-      p.notes.forEach((n) => {
-        if (n.content.toLowerCase().includes(q)) {
-          matches.push({
-            person: p,
-            matchCategory: 'Note',
-            matchSnippet: n.content,
-          });
-        }
-      });
-    });
-
-    return matches;
-  }, [people, query]);
-
-  const getCategoryIcon = (cat: SearchMatch['matchCategory']) => {
+  const getCategoryIcon = (cat: SearchResultItem['category']) => {
     switch (cat) {
       case 'Person':
         return <User className="w-4 h-4 text-secondary" />;
       case 'Gift':
         return <Gift className="w-4 h-4 text-secondary" />;
       case 'Food & Allergies':
-        return <AlertTriangle className="w-4 h-4 text-amber-600" />;
+        return <AlertTriangle className="w-4 h-4 text-red-600" />;
       case 'Note':
         return <FileText className="w-4 h-4 text-secondary" />;
       default:
@@ -194,46 +98,53 @@ export const SearchView: React.FC<SearchViewProps> = ({ people, onSelectPerson }
         </div>
       )}
 
-      {/* Results */}
+      {/* Search results */}
       {query.trim().length >= 2 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between text-xs text-secondary">
             <span>
-              {searchResults.length} {searchResults.length === 1 ? 'match' : 'matches'} found
+              {isSearching ? 'Searching...' : `${results.length} ${results.length === 1 ? 'match' : 'matches'} found`}
             </span>
           </div>
 
-          {searchResults.length > 0 ? (
+          {results.length > 0 ? (
             <div className="space-y-2">
-              {searchResults.map((match, idx) => (
+              {results.map((match) => (
                 <div
-                  key={idx}
-                  onClick={() => onSelectPerson(match.person.id)}
+                  key={match.id}
+                  onClick={() => onSelectPerson(match.personId, match.targetTab)}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      onSelectPerson(match.person.id);
+                      onSelectPerson(match.personId, match.targetTab);
                     }
                   }}
-                  className="bg-surface border border-border hover:border-primary/40 rounded-xl p-4 transition-all duration-150 cursor-pointer shadow-subtle flex items-center justify-between gap-4 group"
+                  className={`bg-surface border rounded-xl p-4 transition-all duration-150 cursor-pointer shadow-subtle flex items-center justify-between gap-4 group ${
+                    match.isAllergyAlert
+                      ? 'border-red-200 hover:border-red-400 bg-red-50/20'
+                      : 'border-border hover:border-primary/40'
+                  }`}
                 >
                   <div className="flex items-start gap-3 min-w-0">
                     <div className="w-8 h-8 rounded-lg bg-canvas border border-border-subtle flex items-center justify-center shrink-0 mt-0.5">
-                      {getCategoryIcon(match.matchCategory)}
+                      {getCategoryIcon(match.category)}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold text-primary group-hover:text-black">
-                          {match.person.name}
+                          {match.personName}
                         </span>
-                        <Badge size="sm" variant="default">
-                          {match.matchCategory}
+                        <Badge
+                          size="sm"
+                          variant={match.isAllergyAlert ? 'danger' : 'default'}
+                        >
+                          {match.category}
                         </Badge>
                       </div>
                       <p className="text-xs text-secondary mt-1 truncate">
-                        {match.matchSnippet}
+                        {match.snippet}
                       </p>
                     </div>
                   </div>
@@ -243,9 +154,11 @@ export const SearchView: React.FC<SearchViewProps> = ({ people, onSelectPerson }
               ))}
             </div>
           ) : (
-            <div className="text-center py-12 bg-surface/50 rounded-xl border border-dashed border-border p-6 text-xs text-secondary">
-              No results found for &ldquo;{query}&rdquo;.
-            </div>
+            !isSearching && (
+              <div className="text-center py-12 bg-surface/50 rounded-xl border border-dashed border-border p-6 text-xs text-secondary">
+                No records found matching &ldquo;{query}&rdquo;.
+              </div>
+            )
           )}
         </div>
       )}

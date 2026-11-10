@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Image as ImageIcon, Trash2 } from 'lucide-react';
 import { Person } from '../../types/person';
-import { GiftIdea, GiftStatus } from '../../types/gift';
+import { GiftIdea, GiftStatus, CreateGiftInput, UpdateGiftInput } from '../../types/gift';
+import { processImageFile } from '../../services/imageService';
 import { Modal } from '../common/Modal';
 import { Input } from '../common/Input';
 import { Button } from '../common/Button';
@@ -8,7 +10,7 @@ import { Button } from '../common/Button';
 interface GiftFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (giftData: Omit<GiftIdea, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  onSave: (giftData: CreateGiftInput | UpdateGiftInput) => void;
   people: Person[];
   defaultPersonId?: string;
   initialGift?: GiftIdea | null;
@@ -29,8 +31,12 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
   const [currency, setCurrency] = useState('€');
   const [occasion, setOccasion] = useState('');
   const [url, setUrl] = useState('');
+  const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState<GiftStatus>('idea');
   const [error, setError] = useState('');
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (initialGift) {
@@ -41,6 +47,7 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
       setCurrency(initialGift.currency || '€');
       setOccasion(initialGift.occasion || '');
       setUrl(initialGift.url || '');
+      setImageUrl(initialGift.imageUrl);
       setStatus(initialGift.status);
     } else {
       setPersonId(defaultPersonId || people[0]?.id || '');
@@ -50,10 +57,33 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
       setCurrency('€');
       setOccasion('');
       setUrl('');
+      setImageUrl(undefined);
       setStatus('idea');
     }
     setError('');
   }, [initialGift, defaultPersonId, people, isOpen]);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsProcessingImage(true);
+      const compressedDataUrl = await processImageFile(file, 800, 0.85);
+      setImageUrl(compressedDataUrl);
+    } catch (err: any) {
+      setError(err.message || 'Failed to process image');
+    } finally {
+      setIsProcessingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setImageUrl(undefined);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,6 +104,7 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
       currency,
       occasion: occasion.trim() || undefined,
       url: url.trim() || undefined,
+      imageUrl: imageUrl || undefined,
       status,
     });
 
@@ -85,7 +116,7 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={initialGift ? 'Edit Gift Idea' : 'Add Gift Idea'}
-      subtitle="Save links, sizes, and ideas for upcoming occasions."
+      subtitle="Save links, sizes, photos, and ideas for upcoming celebrations."
       maxWidth="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -97,7 +128,8 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
             id="gift-recipient-select"
             value={personId}
             onChange={(e) => setPersonId(e.target.value)}
-            className="w-full bg-surface border border-border text-primary text-xs rounded-md p-2.5 focus:outline-none focus:border-primary/60 cursor-pointer"
+            disabled={!!initialGift}
+            className="w-full bg-surface border border-border text-primary text-xs rounded-md p-2.5 focus:outline-none focus:border-primary/60 cursor-pointer disabled:bg-canvas disabled:text-secondary"
           >
             {people.map((p) => (
               <option key={p.id} value={p.id}>
@@ -129,10 +161,10 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
                 onChange={(e) => setCurrency(e.target.value)}
                 className="w-full bg-surface border border-border text-primary text-xs rounded-md py-2 px-1 focus:outline-none focus:border-primary/60"
               >
-                <option value="€">€ (EUR)</option>
-                <option value="$">$ (USD)</option>
-                <option value="£">£ (GBP)</option>
-                <option value="₽">₽ (RUB)</option>
+                <option value="€">€</option>
+                <option value="$">$</option>
+                <option value="£">£</option>
+                <option value="₽">₽</option>
               </select>
             </div>
             <div className="flex-1">
@@ -148,7 +180,7 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
 
           <Input
             label="Occasion"
-            placeholder="e.g. Birthday, Christmas"
+            placeholder="e.g. Birthday, Holiday"
             value={occasion}
             onChange={(e) => setOccasion(e.target.value)}
           />
@@ -163,7 +195,7 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
 
         <div>
           <label className="text-xs font-medium text-secondary block mb-1">
-            Notes & Details
+            Notes & Specifics
           </label>
           <textarea
             value={description}
@@ -172,6 +204,48 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
             rows={2}
             className="w-full bg-surface border border-border text-xs rounded-md p-2.5 text-primary placeholder:text-muted focus:outline-none focus:border-primary/60"
           />
+        </div>
+
+        {/* Local Image Upload */}
+        <div>
+          <label className="text-xs font-medium text-secondary block mb-1">
+            Gift Photo / Screenshot (Stored locally in IndexedDB)
+          </label>
+          {imageUrl ? (
+            <div className="relative inline-block border border-border rounded-lg overflow-hidden group">
+              <img
+                src={imageUrl}
+                alt="Gift preview"
+                className="w-24 h-24 object-cover"
+              />
+              <button
+                type="button"
+                onClick={handleRemoveImage}
+                className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Remove photo"
+              >
+                <Trash2 className="w-4 h-4 text-white" />
+              </button>
+            </div>
+          ) : (
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+                id="gift-photo-input"
+              />
+              <label
+                htmlFor="gift-photo-input"
+                className="inline-flex items-center gap-2 px-3 py-2 border border-dashed border-border rounded-lg text-xs text-secondary hover:text-primary hover:border-primary/40 cursor-pointer transition-colors bg-canvas"
+              >
+                <ImageIcon className="w-4 h-4" />
+                <span>{isProcessingImage ? 'Optimizing photo...' : 'Upload gift image'}</span>
+              </label>
+            </div>
+          )}
         </div>
 
         <div>

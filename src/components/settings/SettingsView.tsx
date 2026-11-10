@@ -1,26 +1,86 @@
-import React, { useState } from 'react';
-import { Shield, Lock, Download, Upload, Trash2, Info, Check, HardDrive } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Shield, Lock, Download, Upload, Trash2, Info, Check, HardDrive, RefreshCw } from 'lucide-react';
+import { exportAllData, importDataFromFile, clearAllLocalData } from '../../services/backupService';
+import { settingsRepository } from '../../db/repositories/settingsRepository';
 import { Button } from '../common/Button';
 import { Badge } from '../common/Badge';
+import { useToast } from '../../hooks/useToast';
 
 interface SettingsViewProps {
-  onClearAllData?: () => void;
-  onExportData?: () => void;
+  onDataReset: () => void;
+  onLoadDemoData: () => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
-  onClearAllData,
-  onExportData,
+  onDataReset,
+  onLoadDemoData,
 }) => {
   const [autoLockMinutes, setAutoLockMinutes] = useState('15');
-  const [copiedStatus, setCopiedStatus] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [exportSuccess, setExportSuccess] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { showToast } = useToast();
 
-  const handleExport = () => {
-    if (onExportData) {
-      onExportData();
-    } else {
-      setCopiedStatus(true);
-      setTimeout(() => setCopiedStatus(false), 2000);
+  useEffect(() => {
+    settingsRepository.get('autoLockMinutes', 15).then((val) => {
+      setAutoLockMinutes(String(val));
+    });
+  }, []);
+
+  const handleAutoLockChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setAutoLockMinutes(val);
+    await settingsRepository.set('autoLockMinutes', val === 'never' ? 0 : parseInt(val, 10));
+    showToast('Auto-lock setting updated');
+  };
+
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      await exportAllData();
+      setExportSuccess(true);
+      showToast('Backup JSON downloaded');
+      setTimeout(() => setExportSuccess(false), 2500);
+    } catch (err: any) {
+      showToast(err.message || 'Export failed', 'error');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsImporting(true);
+      const res = await importDataFromFile(file);
+      if (res.success) {
+        showToast(`Successfully imported backup (${res.count} profiles)`);
+        onDataReset();
+      } else {
+        showToast(res.error || 'Import failed', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Import error', 'error');
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleClearAll = async () => {
+    if (window.confirm('Are you sure you want to completely erase all local records? This action is permanent and cannot be undone.')) {
+      try {
+        await clearAllLocalData();
+        showToast('All local records cleared');
+        onDataReset();
+      } catch (err: any) {
+        showToast(err.message || 'Failed to clear data', 'error');
+      }
     }
   };
 
@@ -30,7 +90,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <div className="pb-4 border-b border-border">
         <h2 className="text-xl font-bold tracking-tight text-primary">Settings</h2>
         <p className="text-xs text-secondary mt-1">
-          Manage privacy, security parameters, backups, and storage preferences.
+          Manage local storage parameters, backups, sample profiles, and security.
         </p>
       </div>
 
@@ -41,9 +101,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <Shield className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-primary">Privacy & Security</h3>
+            <h3 className="text-sm font-semibold text-primary">Storage & Security</h3>
             <p className="text-xs text-secondary">
-              Zero-knowledge architecture. Everything stays in your browser.
+              Zero-knowledge architecture. All records are stored client-side in IndexedDB.
             </p>
           </div>
         </div>
@@ -53,28 +113,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <div className="flex items-start gap-2.5">
               <Lock className="w-4 h-4 text-secondary mt-0.5" />
               <div>
-                <span className="text-xs font-medium text-primary block">Master Password Protection</span>
+                <span className="text-xs font-medium text-primary block">Master Password & AES-GCM</span>
                 <p className="text-[11px] text-secondary">
-                  Data will be encrypted with AES-GCM and key derivation.
+                  Phase 3: Unencrypted local persistence. Full PBKDF2 + AES-GCM activates in Phase 4.
                 </p>
               </div>
             </div>
-            <Badge size="sm" variant="accent">
-              Phase 4 Prepared
+            <Badge size="sm" variant="default">
+              Phase 4 Target
             </Badge>
           </div>
 
           <div className="flex items-center justify-between pt-2">
             <div>
-              <label htmlFor="autolock-select" className="text-xs font-medium text-primary block">Automatic Lock Timeout</label>
+              <label htmlFor="autolock-select" className="text-xs font-medium text-primary block">
+                Automatic Lock Inactivity Timeout
+              </label>
               <p className="text-[11px] text-secondary">
-                Locks the notebook after period of inactivity.
+                Period of inactivity before locking the notebook.
               </p>
             </div>
             <select
               id="autolock-select"
               value={autoLockMinutes}
-              onChange={(e) => setAutoLockMinutes(e.target.value)}
+              onChange={handleAutoLockChange}
               className="bg-canvas border border-border rounded-md px-2.5 py-1 text-xs text-primary focus:outline-none focus:border-primary/60 cursor-pointer"
             >
               <option value="5">5 minutes</option>
@@ -96,7 +158,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div>
             <h3 className="text-sm font-semibold text-primary">Data & Backups</h3>
             <p className="text-xs text-secondary">
-              Export encrypted snapshots to keep your records portable and safe.
+              Export and import portable JSON snapshots of your notebook.
             </p>
           </div>
         </div>
@@ -106,18 +168,39 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             size="sm"
             variant="secondary"
             onClick={handleExport}
-            icon={copiedStatus ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Download className="w-3.5 h-3.5" />}
+            disabled={isExporting}
+            icon={exportSuccess ? <Check className="w-3.5 h-3.5 text-accent-dark" /> : <Download className="w-3.5 h-3.5" />}
           >
-            {copiedStatus ? 'Exported Backup!' : 'Export Encrypted Backup'}
+            {exportSuccess ? 'Downloaded!' : isExporting ? 'Exporting...' : 'Export JSON Backup'}
           </Button>
+
+          <div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json,application/json"
+              onChange={handleImportFile}
+              className="hidden"
+              id="backup-file-input"
+            />
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isImporting}
+              icon={<Upload className="w-3.5 h-3.5" />}
+            >
+              {isImporting ? 'Importing...' : 'Import JSON Backup'}
+            </Button>
+          </div>
 
           <Button
             size="sm"
-            variant="secondary"
-            onClick={() => alert('Backup import will be connected with Phase 4 cryptographic decryption.')}
-            icon={<Upload className="w-3.5 h-3.5" />}
+            variant="ghost"
+            onClick={onLoadDemoData}
+            icon={<RefreshCw className="w-3.5 h-3.5" />}
           >
-            Import Backup File
+            Load Sample Profiles
           </Button>
         </div>
       </div>
@@ -129,17 +212,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <h3 className="text-sm font-semibold text-status-danger-text">Danger Zone</h3>
         </div>
         <p className="text-xs text-secondary leading-relaxed">
-          Irreversibly delete all local storage records, preferences, and cached keys on this device.
+          Irreversibly delete all local storage records, preferences, and custom fields from this browser.
         </p>
         <div className="pt-2">
           <Button
             size="sm"
             variant="danger"
-            onClick={() => {
-              if (window.confirm('Are you sure you want to completely erase all local data? This cannot be undone.')) {
-                if (onClearAllData) onClearAllData();
-              }
-            }}
+            onClick={handleClearAll}
           >
             Erase All Local Data
           </Button>
@@ -150,18 +229,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <div className="p-6 bg-canvas border border-border-subtle rounded-xl text-xs space-y-2">
         <div className="flex items-center gap-2 text-primary font-medium">
           <Info className="w-4 h-4 text-secondary" />
-          <span>Little Details — v0.1.0</span>
+          <span>Little Details — v0.2.0 (Phase 3 Core Functionality)</span>
         </div>
         <p className="text-secondary leading-relaxed">
           &ldquo;Remember what matters.&rdquo; A minimalist, private digital notebook designed for keeping
-          track of the little things about the people you love.
+          track of the small details about loved ones.
         </p>
         <div className="pt-2 flex items-center gap-4 text-[11px] text-muted">
-          <span>Hosted on GitHub Pages</span>
+          <span>IndexedDB local database</span>
           <span>•</span>
-          <span>Zero analytics &amp; no trackers</span>
+          <span>Zero external server dependencies</span>
           <span>•</span>
-          <span>Local client-side execution</span>
+          <span>No trackers</span>
         </div>
       </div>
     </div>

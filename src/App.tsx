@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { ActiveView } from './types/navigation';
-import { Person } from './types/person';
-import { GiftIdea, GiftStatus } from './types/gift';
-import { INITIAL_PEOPLE } from './data/mockData';
+import { ActiveView, PersonProfileTab } from './types/navigation';
+import { Person, CreatePersonInput, UpdatePersonInput } from './types/person';
+import { GiftIdea, CreateGiftInput, UpdateGiftInput } from './types/gift';
+import { usePeople } from './hooks/usePeople';
+import { useGifts, GiftWithRecipient } from './hooks/useGifts';
+import { usePersonDetails } from './hooks/usePersonDetails';
+import { ToastProvider } from './hooks/useToast';
 import { AppLayout } from './components/layout/AppLayout';
 import { PersonList } from './components/people/PersonList';
 import { PersonDetailView } from './components/people/PersonDetailView';
@@ -12,16 +15,54 @@ import { GiftFormModal } from './components/gifts/GiftFormModal';
 import { SearchView } from './components/search/SearchView';
 import { SettingsView } from './components/settings/SettingsView';
 
-export const App: React.FC = () => {
+const MainApp: React.FC = () => {
   const [activeView, setActiveView] = useState<ActiveView>('people');
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
-  const [people, setPeople] = useState<Person[]>(INITIAL_PEOPLE);
+
+  // People hook
+  const {
+    people,
+    deletedPeople,
+    createPerson,
+    updatePerson,
+    deletePerson,
+    restorePerson,
+    reloadDemoData,
+    refresh: refreshPeople,
+  } = usePeople();
+
+  // Gifts hook (for global gifts view)
+  const {
+    gifts: globalGifts,
+    addGift: addGlobalGift,
+    updateGift: updateGlobalGift,
+    updateGiftStatus: updateGlobalGiftStatus,
+    deleteGift: deleteGlobalGift,
+    refresh: refreshGifts,
+  } = useGifts();
+
+  // Person Details hook (for individual person profile)
+  const {
+    person: selectedPerson,
+    gifts: personGifts,
+    notes: personNotes,
+    updatePerson: updateSelectedPerson,
+    addGift: addPersonGift,
+    updateGift: updatePersonGift,
+    updateGiftStatus: updatePersonGiftStatus,
+    deleteGift: deletePersonGift,
+    addNote: addPersonNote,
+    updateNote: updatePersonNote,
+    deleteNote: deletePersonNote,
+    refresh: refreshPersonDetails,
+  } = usePersonDetails(selectedPersonId);
 
   // Modals state
   const [isPersonModalOpen, setIsPersonModalOpen] = useState(false);
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
 
   const [isGiftModalOpen, setIsGiftModalOpen] = useState(false);
+  const [editingGift, setEditingGift] = useState<GiftIdea | null>(null);
   const [giftRecipientId, setGiftRecipientId] = useState<string | undefined>(undefined);
 
   // Navigation handlers
@@ -32,7 +73,7 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleSelectPerson = (personId: string) => {
+  const handleSelectPerson = (personId: string, _initialTab?: PersonProfileTab) => {
     setSelectedPersonId(personId);
     setActiveView('person-detail');
   };
@@ -40,209 +81,177 @@ export const App: React.FC = () => {
   const handleBackToPeople = () => {
     setSelectedPersonId(null);
     setActiveView('people');
+    refreshPeople();
+    refreshGifts();
   };
 
-  // Person CRUD
+  // Person CRUD triggers
   const handleOpenAddPerson = () => {
     setEditingPerson(null);
     setIsPersonModalOpen(true);
   };
 
-  const handleOpenEditPerson = (person: Person) => {
-    setEditingPerson(person);
+  const handleOpenEditPerson = (personToEdit: Person) => {
+    setEditingPerson(personToEdit);
     setIsPersonModalOpen(true);
   };
 
-  const handleSavePerson = (personData: Partial<Person>) => {
-    const timestamp = new Date().toISOString();
-
+  const handleSavePerson = async (personData: CreatePersonInput | UpdatePersonInput) => {
     if (editingPerson) {
-      setPeople((prev) =>
-        prev.map((p) =>
-          p.id === editingPerson.id
-            ? {
-                ...p,
-                ...personData,
-                updatedAt: timestamp,
-              } as Person
-            : p
-        )
-      );
+      await updatePerson(editingPerson.id, personData);
+      if (selectedPersonId === editingPerson.id) {
+        await refreshPersonDetails();
+      }
     } else {
-      const newPerson: Person = {
-        id: `p-${Date.now()}`,
-        name: personData.name || 'Untitled',
-        relationship: personData.relationship,
-        birthday: personData.birthday,
-        avatarColor: '#DCE5DB',
-        details: personData.details || { customFields: [] },
-        preferences: personData.preferences || {
-          colors: [],
-          brands: [],
-          scents: [],
-          hobbies: [],
-          likes: [],
-          dislikes: [],
-        },
-        food: personData.food || {
-          allergies: [],
-          intolerances: [],
-          dietaryRestrictions: [],
-          favoriteFoods: [],
-          dislikedFoods: [],
-        },
-        gifts: personData.gifts || [],
-        notes: personData.notes || [],
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      };
-      setPeople((prev) => [newPerson, ...prev]);
+      const created = await createPerson(personData as CreatePersonInput);
+      handleSelectPerson(created.id);
     }
+    await refreshGifts();
   };
 
-  const handleDeletePerson = (personId: string) => {
-    setPeople((prev) => prev.filter((p) => p.id !== personId));
+  const handleDeletePerson = async (personId: string) => {
+    await deletePerson(personId);
     if (selectedPersonId === personId) {
-      setSelectedPersonId(null);
-      setActiveView('people');
+      handleBackToPeople();
     }
+    await refreshGifts();
   };
 
-  // Gift handlers
+  // Gift CRUD triggers
   const handleOpenAddGift = (personId?: string) => {
+    setEditingGift(null);
     setGiftRecipientId(personId || selectedPersonId || people[0]?.id);
     setIsGiftModalOpen(true);
   };
 
-  const handleSaveGift = (giftData: Omit<GiftIdea, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const timestamp = new Date().toISOString();
-    const newGift: GiftIdea = {
-      ...giftData,
-      id: `g-${Date.now()}`,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    };
-
-    setPeople((prev) =>
-      prev.map((p) => {
-        if (p.id === giftData.personId) {
-          return {
-            ...p,
-            gifts: [newGift, ...p.gifts],
-            updatedAt: timestamp,
-          };
-        }
-        return p;
-      })
-    );
+  const handleOpenEditGift = (giftToEdit: GiftIdea) => {
+    setEditingGift(giftToEdit);
+    setGiftRecipientId(giftToEdit.personId);
+    setIsGiftModalOpen(true);
   };
 
-  const handleUpdateGiftStatus = (giftId: string, newStatus: GiftStatus) => {
-    const timestamp = new Date().toISOString();
-    setPeople((prev) =>
-      prev.map((p) => ({
-        ...p,
-        gifts: p.gifts.map((g) =>
-          g.id === giftId ? { ...g, status: newStatus, updatedAt: timestamp } : g
-        ),
-      }))
-    );
+  const handleSaveGift = async (giftData: CreateGiftInput | UpdateGiftInput) => {
+    if (editingGift) {
+      if (selectedPersonId) {
+        await updatePersonGift(editingGift.id, giftData as UpdateGiftInput);
+      } else {
+        await updateGlobalGift(editingGift.id, giftData as UpdateGiftInput);
+      }
+    } else {
+      const createInput = giftData as CreateGiftInput;
+      if (selectedPersonId && createInput.personId === selectedPersonId) {
+        await addPersonGift(createInput);
+      } else {
+        await addGlobalGift(createInput);
+      }
+    }
+    await refreshGifts();
+    if (selectedPersonId) {
+      await refreshPersonDetails();
+    }
   };
 
-  // Note handler
-  const handleAddNote = (personId: string, noteContent: string) => {
-    const timestamp = new Date().toISOString();
-    setPeople((prev) =>
-      prev.map((p) => {
-        if (p.id === personId) {
-          return {
-            ...p,
-            notes: [
-              {
-                id: `n-${Date.now()}`,
-                content: noteContent,
-                createdAt: timestamp,
-              },
-              ...p.notes,
-            ],
-            updatedAt: timestamp,
-          };
-        }
-        return p;
-      })
-    );
+  const handleDeleteGift = async (giftId: string) => {
+    if (selectedPersonId) {
+      await deletePersonGift(giftId);
+    } else {
+      await deleteGlobalGift(giftId);
+    }
+    await refreshGifts();
   };
 
-  // Export & Erase data
-  const handleExportData = () => {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(people, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `little-details-backup-${new Date().toISOString().slice(0, 10)}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+  const handleUpdateGiftStatus = async (giftId: string, newStatus: any) => {
+    if (selectedPersonId) {
+      await updatePersonGiftStatus(giftId, newStatus);
+    } else {
+      await updateGlobalGiftStatus(giftId, newStatus);
+    }
+    await refreshGifts();
   };
 
-  const handleClearAllData = () => {
-    setPeople([]);
+  const handleDataReset = async () => {
     setSelectedPersonId(null);
     setActiveView('people');
+    await refreshPeople();
+    await refreshGifts();
   };
 
-  // Counts
-  const totalGiftsCount = people.reduce((acc, p) => acc + p.gifts.length, 0);
-  const selectedPerson = people.find((p) => p.id === selectedPersonId);
+  // Calculate gift counts per person
+  const giftCountsMap: Record<string, number> = {};
+  globalGifts.forEach((g) => {
+    giftCountsMap[g.personId] = (giftCountsMap[g.personId] || 0) + 1;
+  });
 
   return (
     <AppLayout
       activeView={activeView}
       onNavigate={handleNavigate}
       peopleCount={people.length}
-      giftsCount={totalGiftsCount}
+      giftsCount={globalGifts.length}
       onQuickAdd={handleOpenAddPerson}
     >
-      {/* View routing */}
+      {/* People View */}
       {activeView === 'people' && (
         <PersonList
           people={people}
+          deletedPeople={deletedPeople}
+          giftCounts={giftCountsMap}
           onSelectPerson={handleSelectPerson}
           onAddPerson={handleOpenAddPerson}
+          onRestorePerson={restorePerson}
+          onLoadDemoData={reloadDemoData}
         />
       )}
 
+      {/* Person Detail View */}
       {activeView === 'person-detail' && selectedPerson && (
         <PersonDetailView
           person={selectedPerson}
+          gifts={personGifts}
+          notes={personNotes}
           onBack={handleBackToPeople}
           onEditPerson={handleOpenEditPerson}
           onDeletePerson={handleDeletePerson}
+          onUpdatePerson={async (input) => {
+            const res = await updateSelectedPerson(input);
+            await refreshPeople();
+            return res;
+          }}
           onAddGift={handleOpenAddGift}
-          onAddNote={handleAddNote}
+          onEditGift={handleOpenEditGift}
+          onDeleteGift={handleDeleteGift}
           onUpdateGiftStatus={handleUpdateGiftStatus}
+          onAddNote={addPersonNote}
+          onUpdateNote={updatePersonNote}
+          onDeleteNote={deletePersonNote}
         />
       )}
 
+      {/* Gifts View */}
       {activeView === 'gifts' && (
         <GiftView
+          gifts={globalGifts}
           people={people}
           onAddGift={() => handleOpenAddGift()}
+          onEditGift={(gift: GiftWithRecipient) => handleOpenEditGift(gift)}
+          onDeleteGift={handleDeleteGift}
           onSelectPerson={handleSelectPerson}
           onUpdateGiftStatus={handleUpdateGiftStatus}
         />
       )}
 
+      {/* Search View */}
       {activeView === 'search' && (
         <SearchView
-          people={people}
           onSelectPerson={handleSelectPerson}
         />
       )}
 
+      {/* Settings View */}
       {activeView === 'settings' && (
         <SettingsView
-          onClearAllData={handleClearAllData}
-          onExportData={handleExportData}
+          onDataReset={handleDataReset}
+          onLoadDemoData={reloadDemoData}
         />
       )}
 
@@ -260,8 +269,17 @@ export const App: React.FC = () => {
         onSave={handleSaveGift}
         people={people}
         defaultPersonId={giftRecipientId}
+        initialGift={editingGift}
       />
     </AppLayout>
+  );
+};
+
+export const App: React.FC = () => {
+  return (
+    <ToastProvider>
+      <MainApp />
+    </ToastProvider>
   );
 };
 

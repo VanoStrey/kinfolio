@@ -1,50 +1,54 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, ExternalLink, Gift, Clock, CheckCircle2, Archive, Lightbulb } from 'lucide-react';
+import { Plus, ExternalLink, Gift, Clock, CheckCircle2, Archive, Lightbulb, Edit3, Trash2 } from 'lucide-react';
 import { Person } from '../../types/person';
-import { GiftIdea, GiftStatus } from '../../types/gift';
+import { GiftStatus } from '../../types/gift';
+import { GiftWithRecipient } from '../../hooks/useGifts';
 import { Button } from '../common/Button';
 import { Badge } from '../common/Badge';
 import { EmptyState } from '../common/EmptyState';
 
 interface GiftViewProps {
+  gifts: GiftWithRecipient[];
   people: Person[];
   onAddGift: () => void;
+  onEditGift: (gift: GiftWithRecipient) => void;
+  onDeleteGift: (giftId: string) => void;
   onSelectPerson: (personId: string) => void;
   onUpdateGiftStatus: (giftId: string, newStatus: GiftStatus) => void;
 }
 
 export const GiftView: React.FC<GiftViewProps> = ({
+  gifts,
   people,
   onAddGift,
+  onEditGift,
+  onDeleteGift,
   onSelectPerson,
   onUpdateGiftStatus,
 }) => {
   const [selectedPersonFilter, setSelectedPersonFilter] = useState<string>('all');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
+  const [selectedOccasionFilter, setSelectedOccasionFilter] = useState<string>('all');
 
-  // Collect all gifts across all people
-  const allGifts = useMemo(() => {
-    const list: Array<GiftIdea & { recipientName: string; recipientRelationship?: string }> = [];
-    people.forEach((p) => {
-      p.gifts.forEach((g) => {
-        list.push({
-          ...g,
-          recipientName: p.name,
-          recipientRelationship: p.relationship,
-        });
-      });
+  // Collect distinct occasions for filtering
+  const distinctOccasions = useMemo(() => {
+    const set = new Set<string>();
+    gifts.forEach((g) => {
+      if (g.occasion) set.add(g.occasion.trim());
     });
-    return list;
-  }, [people]);
+    return Array.from(set).sort();
+  }, [gifts]);
 
-  // Filter gifts
+  // Filtered gifts
   const filteredGifts = useMemo(() => {
-    return allGifts.filter((g) => {
+    return gifts.filter((g) => {
       const matchesPerson = selectedPersonFilter === 'all' || g.personId === selectedPersonFilter;
       const matchesStatus = selectedStatusFilter === 'all' || g.status === selectedStatusFilter;
-      return matchesPerson && matchesStatus;
+      const matchesOccasion =
+        selectedOccasionFilter === 'all' || (g.occasion && g.occasion.trim() === selectedOccasionFilter);
+      return matchesPerson && matchesStatus && matchesOccasion;
     });
-  }, [allGifts, selectedPersonFilter, selectedStatusFilter]);
+  }, [gifts, selectedPersonFilter, selectedStatusFilter, selectedOccasionFilter]);
 
   const getStatusBadge = (status: GiftStatus) => {
     switch (status) {
@@ -95,25 +99,45 @@ export const GiftView: React.FC<GiftViewProps> = ({
         </Button>
       </div>
 
-      {/* Filter Controls */}
+      {/* Filter Controls Bar */}
       <div className="flex flex-wrap items-center gap-3">
         {/* Person filter */}
         <div className="flex items-center gap-1.5 text-xs text-secondary">
-          <label htmlFor="filter-recipient-select" className="shrink-0">Recipient:</label>
+          <label htmlFor="filter-person-select" className="shrink-0">Recipient:</label>
           <select
-            id="filter-recipient-select"
+            id="filter-person-select"
             value={selectedPersonFilter}
             onChange={(e) => setSelectedPersonFilter(e.target.value)}
             className="bg-surface border border-border rounded-md px-2.5 py-1.5 text-xs text-primary focus:outline-none focus:border-primary/60 cursor-pointer"
           >
-            <option value="all">All People ({allGifts.length})</option>
+            <option value="all">All People</option>
             {people.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name} ({p.gifts.length})
+                {p.name}
               </option>
             ))}
           </select>
         </div>
+
+        {/* Occasion filter (if any occasions exist) */}
+        {distinctOccasions.length > 0 && (
+          <div className="flex items-center gap-1.5 text-xs text-secondary">
+            <label htmlFor="filter-occasion-select" className="shrink-0">Occasion:</label>
+            <select
+              id="filter-occasion-select"
+              value={selectedOccasionFilter}
+              onChange={(e) => setSelectedOccasionFilter(e.target.value)}
+              className="bg-surface border border-border rounded-md px-2.5 py-1.5 text-xs text-primary focus:outline-none focus:border-primary/60 cursor-pointer"
+            >
+              <option value="all">All Occasions</option>
+              {distinctOccasions.map((occ) => (
+                <option key={occ} value={occ}>
+                  {occ}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Status filter tabs */}
         <div className="flex items-center gap-1 bg-surface border border-border p-1 rounded-lg text-xs">
@@ -158,13 +182,24 @@ export const GiftView: React.FC<GiftViewProps> = ({
                   {getStatusBadge(gift.status)}
                 </div>
 
+                {/* Optional Gift Image */}
+                {gift.imageUrl && (
+                  <div className="mt-3 rounded-lg overflow-hidden border border-border-subtle bg-canvas max-h-36 flex items-center justify-center">
+                    <img
+                      src={gift.imageUrl}
+                      alt={gift.title}
+                      className="w-full h-36 object-cover"
+                    />
+                  </div>
+                )}
+
                 {gift.description && (
                   <p className="text-xs text-secondary mt-2.5 leading-relaxed">
                     {gift.description}
                   </p>
                 )}
 
-                <div className="flex flex-wrap items-center gap-2.5 mt-4 text-xs">
+                <div className="flex flex-wrap items-center gap-2 mt-4 text-xs">
                   {gift.price !== undefined && (
                     <span className="font-semibold text-primary bg-canvas px-2 py-0.5 rounded border border-border-subtle">
                       {gift.currency || '€'}{gift.price}
@@ -189,9 +224,8 @@ export const GiftView: React.FC<GiftViewProps> = ({
                 </div>
               </div>
 
-              {/* Status Selector */}
-              <div className="mt-4 pt-3 border-t border-border-subtle flex items-center justify-between text-xs text-secondary">
-                <span className="text-[11px]">Status</span>
+              {/* Status Selector & Actions */}
+              <div className="mt-4 pt-3 border-t border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                 <div className="flex items-center gap-1">
                   {(['idea', 'bought', 'given', 'archived'] as GiftStatus[]).map((st) => (
                     <button
@@ -206,6 +240,27 @@ export const GiftView: React.FC<GiftViewProps> = ({
                       {st}
                     </button>
                   ))}
+                </div>
+
+                <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                  <button
+                    onClick={() => onEditGift(gift)}
+                    className="p-1 text-secondary hover:text-primary rounded hover:bg-canvas"
+                    title="Edit gift"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`Delete "${gift.title}"?`)) {
+                        onDeleteGift(gift.id);
+                      }
+                    }}
+                    className="p-1 text-secondary hover:text-red-600 rounded hover:bg-canvas"
+                    title="Delete gift"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -223,6 +278,7 @@ export const GiftView: React.FC<GiftViewProps> = ({
               onClick={() => {
                 setSelectedPersonFilter('all');
                 setSelectedStatusFilter('all');
+                setSelectedOccasionFilter('all');
               }}
             >
               Reset Filters

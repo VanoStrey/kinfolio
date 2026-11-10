@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Person } from '../../types/person';
+import { Person, CreatePersonInput, UpdatePersonInput } from '../../types/person';
 import { Modal } from '../common/Modal';
 import { Input } from '../common/Input';
 import { Button } from '../common/Button';
@@ -7,7 +7,7 @@ import { Button } from '../common/Button';
 interface PersonFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (personData: Partial<Person>) => void;
+  onSave: (personData: CreatePersonInput | UpdatePersonInput) => void;
   initialPerson?: Person | null;
 }
 
@@ -24,7 +24,6 @@ export const PersonFormModal: React.FC<PersonFormModalProps> = ({
   const [shoeSize, setShoeSize] = useState('');
   const [ringSize, setRingSize] = useState('');
   const [allergiesInput, setAllergiesInput] = useState('');
-  const [notesInput, setNotesInput] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -36,7 +35,6 @@ export const PersonFormModal: React.FC<PersonFormModalProps> = ({
       setShoeSize(initialPerson.details?.shoeSize || '');
       setRingSize(initialPerson.details?.ringSize || '');
       setAllergiesInput(initialPerson.food?.allergies?.join(', ') || '');
-      setNotesInput('');
     } else {
       setName('');
       setRelationship('');
@@ -45,7 +43,6 @@ export const PersonFormModal: React.FC<PersonFormModalProps> = ({
       setShoeSize('');
       setRingSize('');
       setAllergiesInput('');
-      setNotesInput('');
     }
     setError('');
   }, [initialPerson, isOpen]);
@@ -88,12 +85,6 @@ export const PersonFormModal: React.FC<PersonFormModalProps> = ({
         likes: [],
         dislikes: [],
       },
-      gifts: initialPerson?.gifts || [],
-      notes: initialPerson?.notes || (notesInput.trim() ? [{
-        id: `n-${Date.now()}`,
-        content: notesInput.trim(),
-        createdAt: new Date().toISOString(),
-      }] : []),
     });
 
     onClose();
@@ -103,7 +94,7 @@ export const PersonFormModal: React.FC<PersonFormModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={initialPerson ? 'Edit Person' : 'Add New Person'}
+      title={initialPerson ? 'Edit Profile' : 'Add New Person'}
       subtitle="Fast capture — fill in what you know now, expand anytime."
       maxWidth="md"
     >
@@ -168,24 +159,9 @@ export const PersonFormModal: React.FC<PersonFormModalProps> = ({
             placeholder="e.g. Peanuts, Shellfish (comma separated)"
             value={allergiesInput}
             onChange={(e) => setAllergiesInput(e.target.value)}
-            hint="Strict medical allergies will show a safety warning badge."
+            hint="Strict medical allergies will show a red safety warning badge."
           />
         </div>
-
-        {!initialPerson && (
-          <div>
-            <label className="text-xs font-medium text-secondary block mb-1">
-              Initial Note or Detail (optional)
-            </label>
-            <textarea
-              value={notesInput}
-              onChange={(e) => setNotesInput(e.target.value)}
-              placeholder="Write a quick thought, favorite perfume, or coffee order..."
-              rows={2}
-              className="w-full bg-surface border border-border text-xs rounded-md p-2.5 text-primary placeholder:text-muted focus:outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/20"
-            />
-          </div>
-        )}
 
         <div className="flex items-center justify-end gap-2 pt-3 border-t border-border-subtle">
           <Button type="button" variant="ghost" onClick={onClose}>

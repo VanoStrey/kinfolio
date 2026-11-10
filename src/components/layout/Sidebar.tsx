@@ -93,14 +93,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       </div>
 
-      {/* Footer / Privacy Status */}
+      {/* Footer / Storage Status */}
       <div className="p-5 border-t border-border-subtle">
-        <div className="flex items-center gap-2 text-muted text-[11px]">
-          <ShieldCheck className="w-3.5 h-3.5 text-accent-dark" />
-          <span>Local & encrypted</span>
+        <div className="flex items-center gap-2 text-primary font-medium text-[11px]">
+          <ShieldCheck className="w-3.5 h-3.5 text-secondary" />
+          <span>Local IndexedDB</span>
         </div>
-        <p className="text-[10px] text-muted/80 mt-1">
-          Zero data leaves your browser
+        <p className="text-[10px] text-muted mt-0.5">
+          Zero data leaves your browser • Phase 4: Encryption
         </p>
       </div>
     </aside>
