@@ -19,6 +19,7 @@ import { GiftIdea, GiftStatus } from '../../types/gift';
 import { Note } from '../../types/note';
 import { Button } from '../common/Button';
 import { Badge } from '../common/Badge';
+import { Modal } from '../common/Modal';
 import { TagManager } from '../common/TagManager';
 import { CustomFieldsEditor } from './CustomFieldsEditor';
 import { NoteEditorModal } from './NoteEditorModal';
@@ -32,7 +33,7 @@ interface PersonDetailViewProps {
   initialTab?: PersonProfileTab;
   onBack: () => void;
   onEditPerson: (person: Person) => void;
-  onDeletePerson: (personId: string) => void;
+  onDeletePerson: (personId: string) => Promise<void> | void;
   onUpdatePerson: (input: UpdatePersonInput) => Promise<Person>;
   onAddGift: (personId: string) => void;
   onEditGift: (gift: GiftIdea) => void;
@@ -84,6 +85,10 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
   // Food note state
   const [foodNote, setFoodNote] = useState(person.food.notes || '');
   const [isEditingFoodNote, setIsEditingFoodNote] = useState(false);
+
+  // Permanent delete confirmation modal state
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const initials = person.name
     .split(' ')
@@ -203,19 +208,6 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
             icon={<Edit3 className="w-3.5 h-3.5" />}
           >
             {t('personDetail.editProfile')}
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-status-danger-text hover:bg-red-50"
-            onClick={() => {
-              if (window.confirm(t('personDetail.confirmDelete', { name: person.name }))) {
-                onDeletePerson(person.id);
-              }
-            }}
-            icon={<Trash2 className="w-3.5 h-3.5" />}
-          >
-            {t('common.delete')}
           </Button>
         </div>
       </div>
@@ -850,6 +842,75 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Delete Card Footer Section */}
+      <div className="pt-6 border-t border-border-subtle">
+        <div className="bg-surface border border-red-200/70 rounded-xl p-5 shadow-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-xs font-semibold text-status-danger-text">
+              {t('personDetail.deleteCardSectionTitle')}
+            </h3>
+            <p className="text-[11px] text-secondary mt-0.5 leading-relaxed">
+              {t('personDetail.deleteCardSectionDesc')}
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="danger"
+            className="shrink-0 self-start sm:self-center"
+            onClick={() => setIsDeleteConfirmOpen(true)}
+            icon={<Trash2 className="w-3.5 h-3.5" />}
+          >
+            {t('personDetail.deleteCardBtn')}
+          </Button>
+        </div>
+      </div>
+
+      {/* Permanent Delete Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => {
+          if (!isDeleting) setIsDeleteConfirmOpen(false);
+        }}
+        title={t('personDetail.deleteConfirmTitle')}
+        maxWidth="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-secondary leading-relaxed">
+            {t('personDetail.deleteConfirmDesc', { name: person.name })}
+          </p>
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-border-subtle">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={isDeleting}
+              onClick={() => setIsDeleteConfirmOpen(false)}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              size="sm"
+              disabled={isDeleting}
+              onClick={async () => {
+                try {
+                  setIsDeleting(true);
+                  await onDeletePerson(person.id);
+                  setIsDeleteConfirmOpen(false);
+                } finally {
+                  setIsDeleting(false);
+                }
+              }}
+              icon={<Trash2 className="w-3.5 h-3.5" />}
+            >
+              {t('personDetail.confirmDeleteCardBtn')}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Note Editor Modal */}
       <NoteEditorModal

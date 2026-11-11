@@ -113,11 +113,12 @@ const MainApp: React.FC = () => {
   };
 
   const handleDeletePerson = async (personId: string) => {
-    await deletePerson(personId);
+    await deletePerson(personId, true);
     if (selectedPersonId === personId) {
       handleBackToPeople();
+    } else {
+      await refreshGifts();
     }
-    await refreshGifts();
   };
 
   // Gift CRUD triggers

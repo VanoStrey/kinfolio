@@ -64,7 +64,6 @@ export const ru: TranslationSchema = {
   personDetail: {
     backToPeople: 'Назад к списку',
     editProfile: 'Редактировать',
-    confirmDelete: 'Переместить профиль «{{name}}» в корзину?',
     updatedOn: 'Обновлено {{date}}',
     addGiftIdea: 'Идея подарка',
     tabDetails: 'Детали',
@@ -86,6 +85,12 @@ export const ru: TranslationSchema = {
     shoePlaceholder: 'напр. EU 38',
     ringPlaceholder: 'напр. 16.5 мм',
     heightPlaceholder: 'напр. 172 см',
+    deleteCardSectionTitle: 'Удалить карточку',
+    deleteCardSectionDesc: 'Карточка человека, а также все размеры, предпочтения, заметки и идеи подарков будут удалены безвозвратно.',
+    deleteCardBtn: 'Удалить карточку',
+    deleteConfirmTitle: 'Вы точно хотите удалить карточку?',
+    deleteConfirmDesc: 'Карточка «{{name}}», а также все записи, заметки и идеи подарков будут удалены безвозвратно. Отменить это действие будет невозможно.',
+    confirmDeleteCardBtn: 'Да, удалить безвозвратно',
   },
   customFields: {
     heading: 'Дополнительные замеры и поля',

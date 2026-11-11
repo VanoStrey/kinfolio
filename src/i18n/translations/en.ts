@@ -62,7 +62,6 @@ export const en = {
   personDetail: {
     backToPeople: 'Back to People',
     editProfile: 'Edit Profile',
-    confirmDelete: 'Are you sure you want to move {{name}} to trash?',
     updatedOn: 'Updated {{date}}',
     addGiftIdea: 'Add Gift Idea',
     tabDetails: 'Details',
@@ -84,6 +83,12 @@ export const en = {
     shoePlaceholder: 'e.g. EU 38',
     ringPlaceholder: 'e.g. 16.5 mm',
     heightPlaceholder: 'e.g. 172 cm',
+    deleteCardSectionTitle: 'Delete Card',
+    deleteCardSectionDesc: 'Permanently remove this person and all their details, notes, and gift ideas.',
+    deleteCardBtn: 'Delete Card',
+    deleteConfirmTitle: 'Are you sure you want to delete this card?',
+    deleteConfirmDesc: 'The card for "{{name}}" along with all sizes, preferences, notes, and gift ideas will be permanently deleted. This action cannot be undone.',
+    confirmDeleteCardBtn: 'Yes, Delete Permanently',
   },
   customFields: {
     heading: 'Custom Measurements & Fields',
