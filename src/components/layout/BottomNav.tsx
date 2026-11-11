@@ -1,6 +1,7 @@
 import React from 'react';
 import { Users, Gift, Search, Settings } from 'lucide-react';
 import { ActiveView } from '../../types/navigation';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 interface BottomNavProps {
   activeView: ActiveView;
@@ -15,27 +16,29 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   peopleCount,
   giftsCount,
 }) => {
+  const { t } = useTranslation();
+
   const navItems = [
     {
       id: 'people' as ActiveView,
-      label: 'People',
+      label: t('nav.people'),
       icon: Users,
       badge: peopleCount,
     },
     {
       id: 'gifts' as ActiveView,
-      label: 'Gifts',
+      label: t('nav.giftsShort'),
       icon: Gift,
       badge: giftsCount,
     },
     {
       id: 'search' as ActiveView,
-      label: 'Search',
+      label: t('nav.search'),
       icon: Search,
     },
     {
       id: 'settings' as ActiveView,
-      label: 'Settings',
+      label: t('nav.settings'),
       icon: Settings,
     },
   ];

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, X } from 'lucide-react';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 interface TagManagerProps {
   title: string;
@@ -15,13 +16,16 @@ export const TagManager: React.FC<TagManagerProps> = ({
   title,
   tags,
   onChange,
-  placeholder = 'Add new item...',
+  placeholder,
   badgeVariant = 'default',
   hint,
   isAllergy = false,
 }) => {
+  const { t } = useTranslation();
   const [inputValue, setInputValue] = useState('');
   const [isAdding, setIsAdding] = useState(false);
+
+  const effectivePlaceholder = placeholder || t('tagManager.defaultPlaceholder');
 
   const handleAdd = () => {
     const trimmed = inputValue.trim();
@@ -64,10 +68,10 @@ export const TagManager: React.FC<TagManagerProps> = ({
             <button
               onClick={() => setIsAdding(true)}
               className="text-xs text-secondary hover:text-primary p-1 rounded-md hover:bg-canvas transition-colors inline-flex items-center gap-1 font-medium"
-              title="Add item"
+              title={t('tagManager.addItemTitle')}
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Add</span>
+              <span>{t('tagManager.add')}</span>
             </button>
           )}
         </div>
@@ -91,14 +95,14 @@ export const TagManager: React.FC<TagManagerProps> = ({
                   type="button"
                   onClick={() => handleRemove(idx)}
                   className="hover:text-red-600 p-0.5 rounded transition-colors"
-                  aria-label={`Remove ${tag}`}
+                  aria-label={t('tagManager.removeLabel', { tag })}
                 >
                   <X className="w-3 h-3" />
                 </button>
               </span>
             ))
           ) : (
-            !isAdding && <span className="text-xs text-muted italic">None recorded.</span>
+            !isAdding && <span className="text-xs text-muted italic">{t('common.noneRecorded')}</span>
           )}
         </div>
       </div>
@@ -111,7 +115,7 @@ export const TagManager: React.FC<TagManagerProps> = ({
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={placeholder}
+            placeholder={effectivePlaceholder}
             autoFocus
             className="flex-1 bg-canvas border border-border text-xs rounded-md px-2.5 py-1.5 text-primary placeholder:text-muted focus:outline-none focus:border-primary/60"
           />
@@ -121,7 +125,7 @@ export const TagManager: React.FC<TagManagerProps> = ({
             disabled={!inputValue.trim()}
             className="text-xs bg-primary text-white px-2.5 py-1.5 rounded-md font-medium disabled:opacity-40 hover:bg-black/90 transition-all"
           >
-            Add
+            {t('tagManager.add')}
           </button>
           <button
             type="button"
@@ -131,7 +135,7 @@ export const TagManager: React.FC<TagManagerProps> = ({
             }}
             className="text-xs text-secondary hover:text-primary px-2 py-1.5"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
         </div>
       )}

@@ -1,6 +1,8 @@
 import React from 'react';
 import { Users, Gift, Search, Settings, ShieldCheck } from 'lucide-react';
 import { ActiveView } from '../../types/navigation';
+import { useTranslation } from '../../i18n/LanguageContext';
+import { LanguageSwitcher } from '../common/LanguageSwitcher';
 
 interface SidebarProps {
   activeView: ActiveView;
@@ -15,27 +17,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
   peopleCount,
   giftsCount,
 }) => {
+  const { t } = useTranslation();
+
   const navItems = [
     {
       id: 'people' as ActiveView,
-      label: 'People',
+      label: t('nav.people'),
       icon: Users,
       badge: peopleCount,
     },
     {
       id: 'gifts' as ActiveView,
-      label: 'Gift Ideas',
+      label: t('nav.gifts'),
       icon: Gift,
       badge: giftsCount,
     },
     {
       id: 'search' as ActiveView,
-      label: 'Search',
+      label: t('nav.search'),
       icon: Search,
     },
     {
       id: 'settings' as ActiveView,
-      label: 'Settings',
+      label: t('nav.settings'),
       icon: Settings,
     },
   ];
@@ -50,10 +54,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
           <div>
             <h1 className="text-sm font-semibold tracking-tight text-primary">
-              Little Details
+              {t('app.name')}
             </h1>
             <p className="text-[11px] text-secondary tracking-normal">
-              Remember what matters
+              {t('app.slogan')}
             </p>
           </div>
         </div>
@@ -93,15 +97,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       </div>
 
-      {/* Footer / Storage Status */}
-      <div className="p-5 border-t border-border-subtle">
-        <div className="flex items-center gap-2 text-primary font-medium text-[11px]">
-          <ShieldCheck className="w-3.5 h-3.5 text-secondary" />
-          <span>Local IndexedDB</span>
+      {/* Footer / Language & Storage Status */}
+      <div className="p-5 border-t border-border-subtle space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] text-secondary font-medium">
+            {t('settings.languageLabel')}
+          </span>
+          <LanguageSwitcher compact />
         </div>
-        <p className="text-[10px] text-muted mt-0.5">
-          Zero data leaves your browser • Phase 4: Encryption
-        </p>
+
+        <div className="pt-2 border-t border-border-subtle">
+          <div className="flex items-center gap-2 text-primary font-medium text-[11px]">
+            <ShieldCheck className="w-3.5 h-3.5 text-secondary" />
+            <span>{t('app.storageStatus')}</span>
+          </div>
+          <p className="text-[10px] text-muted mt-0.5">
+            {t('app.storageSubtext')}
+          </p>
+        </div>
       </div>
     </aside>
   );

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Note } from '../../types/note';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 interface NoteEditorModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
   onSave,
   initialNote,
 }) => {
+  const { t } = useTranslation();
   const [content, setContent] = useState('');
   const [category, setCategory] = useState('');
   const [error, setError] = useState('');
@@ -34,7 +36,7 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim()) {
-      setError('Please write note content.');
+      setError(t('notes.contentError'));
       return;
     }
     onSave(content.trim(), category.trim() || undefined);
@@ -45,18 +47,18 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={initialNote ? 'Edit Note' : 'Add Note'}
-      subtitle="Memories, observations, and personal thoughts."
+      title={initialNote ? t('notes.modalEditTitle') : t('notes.modalAddTitle')}
+      subtitle={t('notes.modalSubtitle')}
       maxWidth="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="text-xs font-medium text-secondary block mb-1">
-            Category / Topic (optional)
+            {t('notes.categoryLabel')}
           </label>
           <input
             type="text"
-            placeholder="e.g. Travel, Books, Story, Conversation"
+            placeholder={t('notes.categoryPlaceholder')}
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             className="w-full bg-surface border border-border text-xs rounded-md p-2 text-primary focus:outline-none focus:border-primary/60"
@@ -65,7 +67,7 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
 
         <div>
           <label className="text-xs font-medium text-secondary block mb-1">
-            Note Content *
+            {t('notes.contentLabel')}
           </label>
           <textarea
             value={content}
@@ -73,7 +75,7 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
               setContent(e.target.value);
               if (error) setError('');
             }}
-            placeholder="Write details, thoughts, or things they mentioned..."
+            placeholder={t('notes.contentPlaceholder')}
             rows={5}
             autoFocus
             className={`w-full bg-canvas border rounded-md p-3 text-xs text-primary placeholder:text-muted focus:outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/20 ${
@@ -85,10 +87,10 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
 
         <div className="flex items-center justify-end gap-2 pt-2 border-t border-border-subtle">
           <Button type="button" variant="ghost" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button type="submit" variant="primary">
-            {initialNote ? 'Update Note' : 'Save Note'}
+            {initialNote ? t('notes.updateNote') : t('notes.saveNote')}
           </Button>
         </div>
       </form>

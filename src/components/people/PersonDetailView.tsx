@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   Calendar,
@@ -22,11 +22,14 @@ import { Badge } from '../common/Badge';
 import { TagManager } from '../common/TagManager';
 import { CustomFieldsEditor } from './CustomFieldsEditor';
 import { NoteEditorModal } from './NoteEditorModal';
+import { useTranslation } from '../../i18n/LanguageContext';
+import { formatShortDate, selectPluralForm } from '../../i18n/helpers';
 
 interface PersonDetailViewProps {
   person: Person;
   gifts: GiftIdea[];
   notes: Note[];
+  initialTab?: PersonProfileTab;
   onBack: () => void;
   onEditPerson: (person: Person) => void;
   onDeletePerson: (personId: string) => void;
@@ -44,6 +47,7 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
   person,
   gifts,
   notes,
+  initialTab = 'details',
   onBack,
   onEditPerson,
   onDeletePerson,
@@ -56,7 +60,12 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
   onUpdateNote,
   onDeleteNote,
 }) => {
-  const [activeTab, setActiveTab] = useState<PersonProfileTab>('details');
+  const { t, language } = useTranslation();
+  const [activeTab, setActiveTab] = useState<PersonProfileTab>(initialTab);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab, person.id]);
 
   // Quick note inline capture state
   const [newNoteText, setNewNoteText] = useState('');
@@ -83,24 +92,20 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
     .join('')
     .toUpperCase();
 
-  const formattedUpdated = new Intl.DateTimeFormat('en', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(new Date(person.updatedAt));
+  const formattedUpdated = formatShortDate(person.updatedAt, language, true);
 
   const hasAllergies = person.food.allergies && person.food.allergies.length > 0;
 
   const tabs: { id: PersonProfileTab; label: string; count?: number }[] = [
-    { id: 'details', label: 'Details' },
-    { id: 'preferences', label: 'Preferences' },
+    { id: 'details', label: t('personDetail.tabDetails') },
+    { id: 'preferences', label: t('personDetail.tabPreferences') },
     {
       id: 'food',
-      label: 'Food',
+      label: t('personDetail.tabFood'),
       count: hasAllergies ? person.food.allergies.length : undefined,
     },
-    { id: 'gifts', label: 'Gifts', count: gifts.length },
-    { id: 'notes', label: 'Notes', count: notes.length },
+    { id: 'gifts', label: t('personDetail.tabGifts'), count: gifts.length },
+    { id: 'notes', label: t('personDetail.tabNotes'), count: notes.length },
   ];
 
   const handleSaveSizes = async () => {
@@ -134,34 +139,49 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
     setIsAddingQuickNote(false);
   };
 
+  const getStatusLabel = (status: GiftStatus) => {
+    switch (status) {
+      case 'idea': return t('gifts.statusIdea');
+      case 'bought': return t('gifts.statusBought');
+      case 'given': return t('gifts.statusGiven');
+      case 'archived': return t('gifts.statusArchived');
+    }
+  };
+
   const getStatusBadge = (status: GiftStatus) => {
     switch (status) {
       case 'idea':
         return (
           <Badge size="sm" variant="default">
-            <Lightbulb className="w-3 h-3 mr-1 text-secondary" /> Idea
+            <Lightbulb className="w-3 h-3 mr-1 text-secondary" /> {t('gifts.statusIdea')}
           </Badge>
         );
       case 'bought':
         return (
           <Badge size="sm" variant="accent">
-            <Clock className="w-3 h-3 mr-1 text-accent-dark" /> Bought
+            <Clock className="w-3 h-3 mr-1 text-accent-dark" /> {t('gifts.statusBought')}
           </Badge>
         );
       case 'given':
         return (
           <Badge size="sm" variant="success">
-            <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-700" /> Given
+            <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-700" /> {t('gifts.statusGiven')}
           </Badge>
         );
       case 'archived':
         return (
           <Badge size="sm" variant="default">
-            <Archive className="w-3 h-3 mr-1 text-muted" /> Archived
+            <Archive className="w-3 h-3 mr-1 text-muted" /> {t('gifts.statusArchived')}
           </Badge>
         );
     }
   };
+
+  const personGiftsCountText = selectPluralForm(gifts.length, language, {
+    singular: t('gifts.personGiftsSingular', { count: gifts.length }),
+    few: t('gifts.personGiftsFew', { count: gifts.length }),
+    many: t('gifts.personGiftsMany', { count: gifts.length }),
+  });
 
   return (
     <div className="space-y-6 pb-12">
@@ -172,7 +192,7 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
           className="inline-flex items-center gap-1.5 text-xs font-medium text-secondary hover:text-primary transition-colors py-1 px-2 -ml-2 rounded-md hover:bg-canvas"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to People</span>
+          <span>{t('personDetail.backToPeople')}</span>
         </button>
 
         <div className="flex items-center gap-2">
@@ -182,20 +202,20 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
             onClick={() => onEditPerson(person)}
             icon={<Edit3 className="w-3.5 h-3.5" />}
           >
-            Edit Profile
+            {t('personDetail.editProfile')}
           </Button>
           <Button
             size="sm"
             variant="ghost"
             className="text-status-danger-text hover:bg-red-50"
             onClick={() => {
-              if (window.confirm(`Are you sure you want to move ${person.name} to trash?`)) {
+              if (window.confirm(t('personDetail.confirmDelete', { name: person.name }))) {
                 onDeletePerson(person.id);
               }
             }}
             icon={<Trash2 className="w-3.5 h-3.5" />}
           >
-            Delete
+            {t('common.delete')}
           </Button>
         </div>
       </div>
@@ -208,7 +228,7 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
               {initials}
             </div>
             <div>
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5 flex-wrap">
                 <h1 className="text-xl font-bold tracking-tight text-primary">
                   {person.name}
                 </h1>
@@ -225,7 +245,7 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
                     <span>{person.birthday}</span>
                   </div>
                 )}
-                <span>Updated {formattedUpdated}</span>
+                <span>{t('personDetail.updatedOn', { date: formattedUpdated })}</span>
               </div>
             </div>
           </div>
@@ -237,7 +257,7 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
               onClick={() => onAddGift(person.id)}
               icon={<GiftIcon className="w-3.5 h-3.5" />}
             >
-              Add Gift Idea
+              {t('personDetail.addGiftIdea')}
             </Button>
           </div>
         </div>
@@ -285,7 +305,7 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
             <div className="bg-surface border border-border rounded-xl p-5 shadow-subtle space-y-4">
               <div className="flex items-center justify-between pb-2 border-b border-border-subtle">
                 <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider">
-                  Body Measurements & Standard Sizes
+                  {t('personDetail.sizesHeading')}
                 </h3>
                 {!isEditingSizes ? (
                   <Button
@@ -300,7 +320,7 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
                     }}
                     icon={<Edit3 className="w-3 h-3" />}
                   >
-                    Edit Sizes
+                    {t('personDetail.editSizes')}
                   </Button>
                 ) : (
                   <div className="flex items-center gap-2">
@@ -309,14 +329,14 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
                       variant="ghost"
                       onClick={() => setIsEditingSizes(false)}
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </Button>
                     <Button
                       size="sm"
                       variant="primary"
                       onClick={handleSaveSizes}
                     >
-                      Save Sizes
+                      {t('personDetail.saveSizes')}
                     </Button>
                   </div>
                 )}
@@ -325,25 +345,25 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
               {!isEditingSizes ? (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div className="bg-canvas border border-border-subtle rounded-lg p-3.5">
-                    <span className="text-[11px] text-secondary font-medium block">Clothing</span>
+                    <span className="text-[11px] text-secondary font-medium block">{t('personDetail.clothingLabel')}</span>
                     <p className="text-sm font-semibold text-primary mt-0.5">
                       {person.details.clothingSize || '—'}
                     </p>
                   </div>
                   <div className="bg-canvas border border-border-subtle rounded-lg p-3.5">
-                    <span className="text-[11px] text-secondary font-medium block">Shoe</span>
+                    <span className="text-[11px] text-secondary font-medium block">{t('personDetail.shoeLabel')}</span>
                     <p className="text-sm font-semibold text-primary mt-0.5">
                       {person.details.shoeSize || '—'}
                     </p>
                   </div>
                   <div className="bg-canvas border border-border-subtle rounded-lg p-3.5">
-                    <span className="text-[11px] text-secondary font-medium block">Ring</span>
+                    <span className="text-[11px] text-secondary font-medium block">{t('personDetail.ringLabel')}</span>
                     <p className="text-sm font-semibold text-primary mt-0.5">
                       {person.details.ringSize || '—'}
                     </p>
                   </div>
                   <div className="bg-canvas border border-border-subtle rounded-lg p-3.5">
-                    <span className="text-[11px] text-secondary font-medium block">Height</span>
+                    <span className="text-[11px] text-secondary font-medium block">{t('personDetail.heightLabel')}</span>
                     <p className="text-sm font-semibold text-primary mt-0.5">
                       {person.details.height || '—'}
                     </p>
@@ -352,42 +372,42 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                   <div>
-                    <label className="text-[11px] text-secondary font-medium block mb-1">Clothing Size</label>
+                    <label className="text-[11px] text-secondary font-medium block mb-1">{t('personDetail.clothingSizeLabel')}</label>
                     <input
                       type="text"
                       value={clothingSize}
                       onChange={(e) => setClothingSize(e.target.value)}
-                      placeholder="e.g. S / EU 36"
+                      placeholder={t('personDetail.clothingPlaceholder')}
                       className="w-full bg-canvas border border-border rounded-md px-2.5 py-1.5 text-xs text-primary focus:outline-none focus:border-primary/60"
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] text-secondary font-medium block mb-1">Shoe Size</label>
+                    <label className="text-[11px] text-secondary font-medium block mb-1">{t('personDetail.shoeSizeLabel')}</label>
                     <input
                       type="text"
                       value={shoeSize}
                       onChange={(e) => setShoeSize(e.target.value)}
-                      placeholder="e.g. EU 38"
+                      placeholder={t('personDetail.shoePlaceholder')}
                       className="w-full bg-canvas border border-border rounded-md px-2.5 py-1.5 text-xs text-primary focus:outline-none focus:border-primary/60"
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] text-secondary font-medium block mb-1">Ring Size</label>
+                    <label className="text-[11px] text-secondary font-medium block mb-1">{t('personDetail.ringSizeLabel')}</label>
                     <input
                       type="text"
                       value={ringSize}
                       onChange={(e) => setRingSize(e.target.value)}
-                      placeholder="e.g. 16.5 mm"
+                      placeholder={t('personDetail.ringPlaceholder')}
                       className="w-full bg-canvas border border-border rounded-md px-2.5 py-1.5 text-xs text-primary focus:outline-none focus:border-primary/60"
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] text-secondary font-medium block mb-1">Height</label>
+                    <label className="text-[11px] text-secondary font-medium block mb-1">{t('personDetail.heightLabel')}</label>
                     <input
                       type="text"
                       value={height}
                       onChange={(e) => setHeight(e.target.value)}
-                      placeholder="e.g. 172 cm"
+                      placeholder={t('personDetail.heightPlaceholder')}
                       className="w-full bg-canvas border border-border rounded-md px-2.5 py-1.5 text-xs text-primary focus:outline-none focus:border-primary/60"
                     />
                   </div>
@@ -414,51 +434,51 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
         {activeTab === 'preferences' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <TagManager
-              title="Scents & Fragrances"
-              hint="Perfumes, candles, colognes, or home aromas"
+              title={t('preferences.scentsTitle')}
+              hint={t('preferences.scentsHint')}
               tags={person.preferences.scents || []}
-              placeholder="e.g. Diptyque Fleur de Peau"
+              placeholder={t('preferences.scentsPlaceholder')}
               onChange={(scents) => onUpdatePerson({ preferences: { ...person.preferences, scents } })}
             />
 
             <TagManager
-              title="Favorite Brands"
-              hint="Fashion, lifestyle, or homeware brands"
+              title={t('preferences.brandsTitle')}
+              hint={t('preferences.brandsHint')}
               tags={person.preferences.brands || []}
-              placeholder="e.g. Aesop, COS, Arket"
+              placeholder={t('preferences.brandsPlaceholder')}
               onChange={(brands) => onUpdatePerson({ preferences: { ...person.preferences, brands } })}
             />
 
             <TagManager
-              title="Favorite Colors"
-              hint="Tones and color palettes they wear or decorate with"
+              title={t('preferences.colorsTitle')}
+              hint={t('preferences.colorsHint')}
               tags={person.preferences.colors || []}
-              placeholder="e.g. Sage Green, Oatmeal"
+              placeholder={t('preferences.colorsPlaceholder')}
               onChange={(colors) => onUpdatePerson({ preferences: { ...person.preferences, colors } })}
             />
 
             <TagManager
-              title="Hobbies & Passions"
-              hint="Activities, sports, crafts, and interests"
+              title={t('preferences.hobbiesTitle')}
+              hint={t('preferences.hobbiesHint')}
               tags={person.preferences.hobbies || []}
-              placeholder="e.g. 35mm photography, ceramics"
+              placeholder={t('preferences.hobbiesPlaceholder')}
               onChange={(hobbies) => onUpdatePerson({ preferences: { ...person.preferences, hobbies } })}
             />
 
             <TagManager
-              title="Things They Love"
-              hint="General likes, styles, and comforts"
+              title={t('preferences.likesTitle')}
+              hint={t('preferences.likesHint')}
               badgeVariant="success"
               tags={person.preferences.likes || []}
-              placeholder="e.g. Linen shirts, oat lattes"
+              placeholder={t('preferences.likesPlaceholder')}
               onChange={(likes) => onUpdatePerson({ preferences: { ...person.preferences, likes } })}
             />
 
             <TagManager
-              title="Things to Avoid / Dislikes"
-              hint="Materials, cuts, or items they do not enjoy"
+              title={t('preferences.dislikesTitle')}
+              hint={t('preferences.dislikesHint')}
               tags={person.preferences.dislikes || []}
-              placeholder="e.g. Synthetic fabrics, neon colors"
+              placeholder={t('preferences.dislikesPlaceholder')}
               onChange={(dislikes) => onUpdatePerson({ preferences: { ...person.preferences, dislikes } })}
             />
           </div>
@@ -472,53 +492,53 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-red-700" />
                 <h3 className="text-xs font-bold text-red-900 uppercase tracking-wider">
-                  Medical Allergies (High Priority)
+                  {t('food.allergiesBannerTitle')}
                 </h3>
               </div>
               <p className="text-[11px] text-red-800 leading-relaxed">
-                Critical medical allergies. Always distinguish from preferences to prevent anaphylaxis and contamination.
+                {t('food.allergiesBannerDesc')}
               </p>
 
               <TagManager
-                title="Active Medical Allergies"
+                title={t('food.allergiesTitle')}
                 isAllergy={true}
                 tags={person.food.allergies || []}
-                placeholder="e.g. Peanuts (Anaphylaxis risk)"
+                placeholder={t('food.allergiesPlaceholder')}
                 onChange={(allergies) => onUpdatePerson({ food: { ...person.food, allergies } })}
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <TagManager
-                title="Intolerances & Sensitivities"
-                hint="e.g. Lactose, mild gluten sensitivity"
+                title={t('food.intolerancesTitle')}
+                hint={t('food.intolerancesHint')}
                 badgeVariant="warning"
                 tags={person.food.intolerances || []}
-                placeholder="e.g. Lactose"
+                placeholder={t('food.intolerancesPlaceholder')}
                 onChange={(intolerances) => onUpdatePerson({ food: { ...person.food, intolerances } })}
               />
 
               <TagManager
-                title="Dietary Restrictions"
-                hint="Ethical or lifestyle diets (e.g. Vegetarian, Halal)"
+                title={t('food.dietaryTitle')}
+                hint={t('food.dietaryHint')}
                 tags={person.food.dietaryRestrictions || []}
-                placeholder="e.g. Pescatarian"
+                placeholder={t('food.dietaryPlaceholder')}
                 onChange={(dietaryRestrictions) => onUpdatePerson({ food: { ...person.food, dietaryRestrictions } })}
               />
 
               <TagManager
-                title="Favorite Foods & Dishes"
+                title={t('food.favoriteFoodsTitle')}
                 badgeVariant="success"
                 tags={person.food.favoriteFoods || []}
-                placeholder="e.g. Truffle risotto, Shakshuka"
+                placeholder={t('food.favoriteFoodsPlaceholder')}
                 onChange={(favoriteFoods) => onUpdatePerson({ food: { ...person.food, favoriteFoods } })}
               />
 
               <TagManager
-                title="Disliked Foods"
-                hint="Personal distaste or ingredients they avoid"
+                title={t('food.dislikedFoodsTitle')}
+                hint={t('food.dislikedFoodsHint')}
                 tags={person.food.dislikedFoods || []}
-                placeholder="e.g. Cilantro, Blue cheese"
+                placeholder={t('food.dislikedFoodsPlaceholder')}
                 onChange={(dislikedFoods) => onUpdatePerson({ food: { ...person.food, dislikedFoods } })}
               />
             </div>
@@ -528,10 +548,10 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
               <div className="flex items-center justify-between pb-2 border-b border-border-subtle">
                 <div>
                   <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider">
-                    Kitchen & Dining Advice Note
+                    {t('food.kitchenNoteHeading')}
                   </h3>
                   <p className="text-[11px] text-muted mt-0.5">
-                    Tips for cooking for them, restaurant ordering, or coffee preferences.
+                    {t('food.kitchenNoteSubheading')}
                   </p>
                 </div>
 
@@ -545,7 +565,7 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
                     }}
                     icon={<Edit3 className="w-3 h-3" />}
                   >
-                    Edit Note
+                    {t('food.editNote')}
                   </Button>
                 ) : (
                   <div className="flex items-center gap-2">
@@ -554,14 +574,14 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
                       variant="ghost"
                       onClick={() => setIsEditingFoodNote(false)}
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </Button>
                     <Button
                       size="sm"
                       variant="primary"
                       onClick={handleSaveFoodNote}
                     >
-                      Save Note
+                      {t('food.saveNote')}
                     </Button>
                   </div>
                 )}
@@ -569,13 +589,13 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
 
               {!isEditingFoodNote ? (
                 <p className="text-xs text-primary leading-relaxed whitespace-pre-wrap">
-                  {person.food.notes || <span className="text-muted italic">No kitchen notes added yet.</span>}
+                  {person.food.notes || <span className="text-muted italic">{t('food.emptyKitchenNote')}</span>}
                 </p>
               ) : (
                 <textarea
                   value={foodNote}
                   onChange={(e) => setFoodNote(e.target.value)}
-                  placeholder="e.g. Always check with restaurant staff regarding peanut oil..."
+                  placeholder={t('food.kitchenNotePlaceholder')}
                   rows={3}
                   className="w-full bg-canvas border border-border rounded-md p-3 text-xs text-primary placeholder:text-muted focus:outline-none focus:border-primary/60"
                 />
@@ -589,7 +609,7 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
           <div className="space-y-4">
             <div className="flex items-center justify-between pb-2">
               <span className="text-xs text-secondary">
-                {gifts.length} {gifts.length === 1 ? 'gift idea' : 'gift ideas'} recorded
+                {personGiftsCountText}
               </span>
               <Button
                 size="sm"
@@ -597,7 +617,7 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
                 onClick={() => onAddGift(person.id)}
                 icon={<Plus className="w-3.5 h-3.5" />}
               >
-                Add Gift Idea
+                {t('gifts.addGiftIdea')}
               </Button>
             </div>
 
@@ -649,7 +669,7 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 text-primary hover:underline"
                           >
-                            <span>Store link</span>
+                            <span>{t('gifts.storeLink')}</span>
                             <ExternalLink className="w-3 h-3 text-secondary" />
                           </a>
                         )}
@@ -658,18 +678,18 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
 
                     {/* Status Changer & Actions */}
                     <div className="mt-4 pt-3 border-t border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 flex-wrap">
                         {(['idea', 'bought', 'given', 'archived'] as GiftStatus[]).map((st) => (
                           <button
                             key={st}
                             onClick={() => onUpdateGiftStatus(gift.id, st)}
-                            className={`text-[10px] px-2 py-0.5 rounded capitalize transition-colors ${
+                            className={`text-[10px] px-2 py-0.5 rounded transition-colors ${
                               gift.status === st
                                 ? 'bg-primary text-white font-medium'
                                 : 'text-secondary hover:text-primary hover:bg-canvas'
                             }`}
                           >
-                            {st}
+                            {getStatusLabel(st)}
                           </button>
                         ))}
                       </div>
@@ -678,18 +698,18 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
                         <button
                           onClick={() => onEditGift(gift)}
                           className="text-secondary hover:text-primary p-1 rounded hover:bg-canvas"
-                          title="Edit gift"
+                          title={t('gifts.editGift')}
                         >
                           <Edit3 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => {
-                            if (window.confirm(`Delete "${gift.title}"?`)) {
+                            if (window.confirm(t('gifts.confirmDeleteGift', { title: gift.title }))) {
                               onDeleteGift(gift.id);
                             }
                           }}
                           className="text-secondary hover:text-red-600 p-1 rounded hover:bg-canvas"
-                          title="Delete gift"
+                          title={t('gifts.deleteGift')}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -701,12 +721,14 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
             ) : (
               <div className="text-center py-12 bg-surface/50 rounded-xl border border-dashed border-border p-6">
                 <GiftIcon className="w-6 h-6 text-secondary mx-auto mb-2 opacity-50" />
-                <p className="text-xs font-medium text-primary">No gift ideas yet for {person.name}</p>
+                <p className="text-xs font-medium text-primary">
+                  {t('gifts.noPersonGiftsTitle', { name: person.name })}
+                </p>
                 <p className="text-[11px] text-secondary mt-0.5 mb-4">
-                  Save wishlist items, links, photos, and ideas for upcoming celebrations.
+                  {t('gifts.noPersonGiftsDesc')}
                 </p>
                 <Button size="sm" variant="secondary" onClick={() => onAddGift(person.id)}>
-                  Add First Gift
+                  {t('gifts.addFirstGift')}
                 </Button>
               </div>
             )}
@@ -718,7 +740,7 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
           <div className="space-y-4">
             <div className="flex items-center justify-between pb-2">
               <span className="text-xs text-secondary">
-                Free-form observations, memories, and personal notes ({notes.length})
+                {t('notes.sectionInfo', { count: notes.length })}
               </span>
               {!isAddingQuickNote && (
                 <Button
@@ -727,7 +749,7 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
                   onClick={() => setIsAddingQuickNote(true)}
                   icon={<Plus className="w-3.5 h-3.5" />}
                 >
-                  Add Note
+                  {t('notes.addNote')}
                 </Button>
               )}
             </div>
@@ -738,11 +760,11 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
                 onSubmit={handleCreateQuickNote}
                 className="bg-surface border border-border-strong rounded-xl p-4 shadow-subtle space-y-3"
               >
-                <label className="text-xs font-semibold text-primary block">New Note</label>
+                <label className="text-xs font-semibold text-primary block">{t('notes.newNoteLabel')}</label>
                 <textarea
                   value={newNoteText}
                   onChange={(e) => setNewNoteText(e.target.value)}
-                  placeholder="Record an observation, story, book recommendation, or detail..."
+                  placeholder={t('notes.newNotePlaceholder')}
                   rows={3}
                   autoFocus
                   className="w-full bg-canvas border border-border text-xs rounded-md p-3 text-primary placeholder:text-muted focus:outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/20"
@@ -757,10 +779,10 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
                       setNewNoteText('');
                     }}
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </Button>
                   <Button size="sm" variant="primary" type="submit" disabled={!newNoteText.trim()}>
-                    Save Note
+                    {t('notes.saveNote')}
                   </Button>
                 </div>
               </form>
@@ -769,11 +791,7 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
             {notes.length > 0 ? (
               <div className="space-y-3">
                 {notes.map((note) => {
-                  const noteDate = new Intl.DateTimeFormat('en', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  }).format(new Date(note.createdAt));
+                  const noteDate = formatShortDate(note.createdAt, language, true);
 
                   return (
                     <div
@@ -790,23 +808,23 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
                       </div>
 
                       <div className="mt-4 pt-3 border-t border-border-subtle flex items-center justify-between text-[11px] text-muted">
-                        <span>Recorded on {noteDate}</span>
+                        <span>{t('notes.recordedOn', { date: noteDate })}</span>
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => setEditingNote(note)}
                             className="p-1 text-secondary hover:text-primary rounded hover:bg-canvas"
-                            title="Edit note"
+                            title={t('notes.editNoteTitle')}
                           >
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => {
-                              if (window.confirm('Delete this note?')) {
+                              if (window.confirm(t('notes.confirmDeleteNote'))) {
                                 onDeleteNote(note.id);
                               }
                             }}
                             className="p-1 text-secondary hover:text-red-600 rounded hover:bg-canvas"
-                            title="Delete note"
+                            title={t('notes.deleteNoteTitle')}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -819,12 +837,12 @@ export const PersonDetailView: React.FC<PersonDetailViewProps> = ({
             ) : (
               !isAddingQuickNote && (
                 <div className="text-center py-12 bg-surface/50 rounded-xl border border-dashed border-border p-6">
-                  <p className="text-xs font-medium text-primary">No notes yet</p>
+                  <p className="text-xs font-medium text-primary">{t('notes.emptyTitle')}</p>
                   <p className="text-[11px] text-secondary mt-0.5 mb-4">
-                    Write down memories, things they mentioned wanting to try, or small observations.
+                    {t('notes.emptyDesc')}
                   </p>
                   <Button size="sm" variant="secondary" onClick={() => setIsAddingQuickNote(true)}>
-                    Add First Note
+                    {t('notes.addFirstNote')}
                   </Button>
                 </div>
               )

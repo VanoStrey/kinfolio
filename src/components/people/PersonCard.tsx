@@ -2,6 +2,8 @@ import React from 'react';
 import { Gift, Calendar, AlertTriangle, ArrowUpRight } from 'lucide-react';
 import { Person } from '../../types/person';
 import { Badge } from '../common/Badge';
+import { useTranslation } from '../../i18n/LanguageContext';
+import { formatShortDate, selectPluralForm } from '../../i18n/helpers';
 
 interface PersonCardProps {
   person: Person;
@@ -10,6 +12,8 @@ interface PersonCardProps {
 }
 
 export const PersonCard: React.FC<PersonCardProps> = ({ person, giftCount = 0, onSelect }) => {
+  const { t, language } = useTranslation();
+
   // Extract initials
   const initials = person.name
     .split(' ')
@@ -19,12 +23,15 @@ export const PersonCard: React.FC<PersonCardProps> = ({ person, giftCount = 0, o
     .toUpperCase();
 
   // Format updated date nicely
-  const formattedUpdated = new Intl.DateTimeFormat('en', {
-    month: 'short',
-    day: 'numeric',
-  }).format(new Date(person.updatedAt));
+  const formattedUpdated = formatShortDate(person.updatedAt, language);
 
   const hasAllergies = person.food.allergies && person.food.allergies.length > 0;
+
+  const giftLabel = selectPluralForm(giftCount, language, {
+    singular: t('personCard.giftSingular'),
+    few: t('personCard.giftFew'),
+    many: t('personCard.giftMany'),
+  });
 
   return (
     <div
@@ -52,7 +59,7 @@ export const PersonCard: React.FC<PersonCardProps> = ({ person, giftCount = 0, o
                   {person.name}
                 </h3>
                 {person.starred && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-accent-dark" title="Starred" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent-dark" title={t('personCard.starred')} />
                 )}
               </div>
               {person.relationship && (
@@ -70,17 +77,17 @@ export const PersonCard: React.FC<PersonCardProps> = ({ person, giftCount = 0, o
         <div className="mt-4 pt-3 border-t border-border-subtle flex flex-wrap gap-1.5">
           {person.details.clothingSize && (
             <Badge size="sm" variant="default">
-              Cloth: {person.details.clothingSize.split(' ')[0]}
+              {t('personCard.clothPrefix')} {person.details.clothingSize.split(' ')[0]}
             </Badge>
           )}
           {person.details.shoeSize && (
             <Badge size="sm" variant="default">
-              Shoe: {person.details.shoeSize.split(' ')[0]} {person.details.shoeSize.split(' ')[1] || ''}
+              {t('personCard.shoePrefix')} {person.details.shoeSize.split(' ')[0]} {person.details.shoeSize.split(' ')[1] || ''}
             </Badge>
           )}
           {person.details.ringSize && (
             <Badge size="sm" variant="default">
-              Ring: {person.details.ringSize.split(' ')[0]}
+              {t('personCard.ringPrefix')} {person.details.ringSize.split(' ')[0]}
             </Badge>
           )}
         </div>
@@ -90,7 +97,7 @@ export const PersonCard: React.FC<PersonCardProps> = ({ person, giftCount = 0, o
           <div className="mt-2.5">
             <Badge size="sm" variant="danger" dot>
               <AlertTriangle className="w-3 h-3 text-red-600 mr-0.5 inline" />
-              Allergy: {person.food.allergies[0].split('(')[0].trim()}
+              {t('personCard.allergyPrefix')} {person.food.allergies[0].split('(')[0].trim()}
             </Badge>
           </div>
         )}
@@ -109,12 +116,12 @@ export const PersonCard: React.FC<PersonCardProps> = ({ person, giftCount = 0, o
           {giftCount > 0 && (
             <div className="flex items-center gap-1 text-secondary">
               <Gift className="w-3 h-3 text-secondary/70" />
-              <span>{giftCount} {giftCount === 1 ? 'gift idea' : 'gifts'}</span>
+              <span>{giftCount} {giftLabel}</span>
             </div>
           )}
         </div>
 
-        <span>Updated {formattedUpdated}</span>
+        <span>{t('personCard.updatedPrefix')} {formattedUpdated}</span>
       </div>
     </div>
   );

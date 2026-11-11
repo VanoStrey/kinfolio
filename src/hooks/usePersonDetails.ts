@@ -6,6 +6,7 @@ import { peopleRepository } from '../db/repositories/peopleRepository';
 import { giftsRepository } from '../db/repositories/giftsRepository';
 import { notesRepository } from '../db/repositories/notesRepository';
 import { useToast } from './useToast';
+import { useTranslation } from '../i18n/LanguageContext';
 
 export function usePersonDetails(personId: string | null) {
   const [person, setPerson] = useState<Person | null>(null);
@@ -14,6 +15,16 @@ export function usePersonDetails(personId: string | null) {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const { showToast } = useToast();
+  const { t } = useTranslation();
+
+  const statusLabel = (status: GiftStatus) => {
+    switch (status) {
+      case 'idea': return t('gifts.statusIdea');
+      case 'bought': return t('gifts.statusBought');
+      case 'given': return t('gifts.statusGiven');
+      case 'archived': return t('gifts.statusArchived');
+    }
+  };
 
   const loadData = useCallback(async () => {
     if (!personId) {
@@ -60,10 +71,10 @@ export function usePersonDetails(personId: string | null) {
     try {
       const updated = await peopleRepository.update(personId, input);
       setPerson(updated);
-      showToast('Changes saved');
+      showToast(t('toasts.changesSaved'));
       return updated;
     } catch (err: any) {
-      showToast(err.message || 'Failed to save changes', 'error');
+      showToast(err.message || t('toasts.failedSaveChanges'), 'error');
       throw err;
     }
   };
@@ -77,10 +88,10 @@ export function usePersonDetails(personId: string | null) {
         personId,
       });
       setGifts((prev) => [created, ...prev]);
-      showToast(`Added gift idea: "${created.title}"`);
+      showToast(t('toasts.giftAdded', { title: created.title }));
       return created;
     } catch (err: any) {
-      showToast(err.message || 'Failed to add gift idea', 'error');
+      showToast(err.message || t('toasts.failedAddGift'), 'error');
       throw err;
     }
   };
@@ -89,10 +100,10 @@ export function usePersonDetails(personId: string | null) {
     try {
       const updated = await giftsRepository.update(giftId, input);
       setGifts((prev) => prev.map((g) => (g.id === giftId ? updated : g)));
-      showToast('Gift updated');
+      showToast(t('toasts.giftUpdated'));
       return updated;
     } catch (err: any) {
-      showToast(err.message || 'Failed to update gift', 'error');
+      showToast(err.message || t('toasts.failedUpdateGift'), 'error');
       throw err;
     }
   };
@@ -101,10 +112,10 @@ export function usePersonDetails(personId: string | null) {
     try {
       const updated = await giftsRepository.updateStatus(giftId, status);
       setGifts((prev) => prev.map((g) => (g.id === giftId ? updated : g)));
-      showToast(`Marked as ${status}`);
+      showToast(t('toasts.giftStatusMarked', { status: statusLabel(status) }));
       return updated;
     } catch (err: any) {
-      showToast(err.message || 'Failed to update gift status', 'error');
+      showToast(err.message || t('toasts.failedUpdateGiftStatus'), 'error');
       throw err;
     }
   };
@@ -113,9 +124,9 @@ export function usePersonDetails(personId: string | null) {
     try {
       await giftsRepository.hardDelete(giftId);
       setGifts((prev) => prev.filter((g) => g.id !== giftId));
-      showToast('Gift idea removed');
+      showToast(t('toasts.giftRemoved'));
     } catch (err: any) {
-      showToast(err.message || 'Failed to delete gift', 'error');
+      showToast(err.message || t('toasts.failedDeleteGift'), 'error');
       throw err;
     }
   };
@@ -130,10 +141,10 @@ export function usePersonDetails(personId: string | null) {
         category,
       });
       setNotes((prev) => [created, ...prev]);
-      showToast('Note added');
+      showToast(t('toasts.noteAdded'));
       return created;
     } catch (err: any) {
-      showToast(err.message || 'Failed to add note', 'error');
+      showToast(err.message || t('toasts.failedAddNote'), 'error');
       throw err;
     }
   };
@@ -142,10 +153,10 @@ export function usePersonDetails(personId: string | null) {
     try {
       const updated = await notesRepository.update(noteId, { content, category });
       setNotes((prev) => prev.map((n) => (n.id === noteId ? updated : n)));
-      showToast('Note saved');
+      showToast(t('toasts.noteSaved'));
       return updated;
     } catch (err: any) {
-      showToast(err.message || 'Failed to update note', 'error');
+      showToast(err.message || t('toasts.failedUpdateNote'), 'error');
       throw err;
     }
   };
@@ -154,9 +165,9 @@ export function usePersonDetails(personId: string | null) {
     try {
       await notesRepository.hardDelete(noteId);
       setNotes((prev) => prev.filter((n) => n.id !== noteId));
-      showToast('Note removed');
+      showToast(t('toasts.noteRemoved'));
     } catch (err: any) {
-      showToast(err.message || 'Failed to delete note', 'error');
+      showToast(err.message || t('toasts.failedDeleteNote'), 'error');
       throw err;
     }
   };

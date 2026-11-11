@@ -6,6 +6,7 @@ import { processImageFile } from '../../services/imageService';
 import { Modal } from '../common/Modal';
 import { Input } from '../common/Input';
 import { Button } from '../common/Button';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 interface GiftFormModalProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
   defaultPersonId,
   initialGift,
 }) => {
+  const { t } = useTranslation();
   const [personId, setPersonId] = useState(defaultPersonId || people[0]?.id || '');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -88,11 +90,11 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
-      setError('Please provide a gift title.');
+      setError(t('giftForm.titleError'));
       return;
     }
     if (!personId) {
-      setError('Please select a recipient.');
+      setError(t('giftForm.recipientError'));
       return;
     }
 
@@ -115,14 +117,14 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={initialGift ? 'Edit Gift Idea' : 'Add Gift Idea'}
-      subtitle="Save links, sizes, photos, and ideas for upcoming celebrations."
+      title={initialGift ? t('giftForm.editTitle') : t('giftForm.addTitle')}
+      subtitle={t('giftForm.subtitle')}
       maxWidth="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="gift-recipient-select" className="text-xs font-medium text-secondary block mb-1">
-            Recipient *
+            {t('giftForm.recipientLabel')}
           </label>
           <select
             id="gift-recipient-select"
@@ -140,8 +142,8 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
         </div>
 
         <Input
-          label="Gift Item / Title *"
-          placeholder="e.g. Diptyque Candle or Cashmere Beanie"
+          label={t('giftForm.titleLabel')}
+          placeholder={t('giftForm.titlePlaceholder')}
           value={title}
           onChange={(e) => {
             setTitle(e.target.value);
@@ -154,7 +156,9 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
         <div className="grid grid-cols-2 gap-3">
           <div className="flex gap-2">
             <div className="w-16 shrink-0">
-              <label htmlFor="gift-currency-select" className="text-xs font-medium text-secondary block mb-1">Currency</label>
+              <label htmlFor="gift-currency-select" className="text-xs font-medium text-secondary block mb-1">
+                {t('giftForm.currencyLabel')}
+              </label>
               <select
                 id="gift-currency-select"
                 value={currency}
@@ -169,7 +173,7 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
             </div>
             <div className="flex-1">
               <Input
-                label="Price (approx)"
+                label={t('giftForm.priceLabel')}
                 type="number"
                 placeholder="45"
                 value={price}
@@ -179,15 +183,15 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
           </div>
 
           <Input
-            label="Occasion"
-            placeholder="e.g. Birthday, Holiday"
+            label={t('giftForm.occasionLabel')}
+            placeholder={t('giftForm.occasionPlaceholder')}
             value={occasion}
             onChange={(e) => setOccasion(e.target.value)}
           />
         </div>
 
         <Input
-          label="Product / Store URL (optional)"
+          label={t('giftForm.urlLabel')}
           placeholder="https://..."
           value={url}
           onChange={(e) => setUrl(e.target.value)}
@@ -195,12 +199,12 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
 
         <div>
           <label className="text-xs font-medium text-secondary block mb-1">
-            Notes & Specifics
+            {t('giftForm.notesLabel')}
           </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Color preference, specific store, or size..."
+            placeholder={t('giftForm.notesPlaceholder')}
             rows={2}
             className="w-full bg-surface border border-border text-xs rounded-md p-2.5 text-primary placeholder:text-muted focus:outline-none focus:border-primary/60"
           />
@@ -209,7 +213,7 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
         {/* Local Image Upload */}
         <div>
           <label className="text-xs font-medium text-secondary block mb-1">
-            Gift Photo / Screenshot (Stored locally in IndexedDB)
+            {t('giftForm.photoLabel')}
           </label>
           {imageUrl ? (
             <div className="relative inline-block border border-border rounded-lg overflow-hidden group">
@@ -222,7 +226,7 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
                 type="button"
                 onClick={handleRemoveImage}
                 className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                title="Remove photo"
+                title={t('giftForm.removePhoto')}
               >
                 <Trash2 className="w-4 h-4 text-white" />
               </button>
@@ -242,33 +246,35 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
                 className="inline-flex items-center gap-2 px-3 py-2 border border-dashed border-border rounded-lg text-xs text-secondary hover:text-primary hover:border-primary/40 cursor-pointer transition-colors bg-canvas"
               >
                 <ImageIcon className="w-4 h-4" />
-                <span>{isProcessingImage ? 'Optimizing photo...' : 'Upload gift image'}</span>
+                <span>{isProcessingImage ? t('giftForm.optimizingPhoto') : t('giftForm.uploadPhoto')}</span>
               </label>
             </div>
           )}
         </div>
 
         <div>
-          <label htmlFor="gift-status-select" className="text-xs font-medium text-secondary block mb-1">Status</label>
+          <label htmlFor="gift-status-select" className="text-xs font-medium text-secondary block mb-1">
+            {t('giftForm.statusLabel')}
+          </label>
           <select
             id="gift-status-select"
             value={status}
             onChange={(e) => setStatus(e.target.value as GiftStatus)}
-            className="w-full bg-surface border border-border text-primary text-xs rounded-md p-2 focus:outline-none focus:border-primary/60 cursor-pointer capitalize"
+            className="w-full bg-surface border border-border text-primary text-xs rounded-md p-2 focus:outline-none focus:border-primary/60 cursor-pointer"
           >
-            <option value="idea">Idea (Considering)</option>
-            <option value="bought">Bought (Purchased / Ready)</option>
-            <option value="given">Given (Delivered)</option>
-            <option value="archived">Archived</option>
+            <option value="idea">{t('giftForm.statusOptionIdea')}</option>
+            <option value="bought">{t('giftForm.statusOptionBought')}</option>
+            <option value="given">{t('giftForm.statusOptionGiven')}</option>
+            <option value="archived">{t('giftForm.statusOptionArchived')}</option>
           </select>
         </div>
 
         <div className="flex items-center justify-end gap-2 pt-3 border-t border-border-subtle">
           <Button type="button" variant="ghost" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button type="submit" variant="primary">
-            {initialGift ? 'Update Gift' : 'Save Gift Idea'}
+            {initialGift ? t('giftForm.updateGift') : t('giftForm.saveGift')}
           </Button>
         </div>
       </form>

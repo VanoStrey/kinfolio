@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Search, User, Gift, FileText, AlertTriangle, ArrowRight } from 'lucide-react';
 import { PersonProfileTab } from '../../types/navigation';
-import { searchAllRecords, SearchResultItem } from '../../services/searchService';
+import { searchAllRecords, SearchResultItem, SearchCategory } from '../../services/searchService';
 import { Badge } from '../common/Badge';
+import { useTranslation } from '../../i18n/LanguageContext';
+import { selectPluralForm } from '../../i18n/helpers';
 
 interface SearchViewProps {
   onSelectPerson: (personId: string, initialTab?: PersonProfileTab) => void;
 }
 
 export const SearchView: React.FC<SearchViewProps> = ({ onSelectPerson }) => {
+  const { t, language } = useTranslation();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResultItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -18,7 +21,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ onSelectPerson }) => {
 
     if (query.trim().length >= 2) {
       setIsSearching(true);
-      searchAllRecords(query).then((items) => {
+      searchAllRecords(query, language).then((items) => {
         if (!isCancelled) {
           setResults(items);
           setIsSearching(false);
@@ -32,9 +35,9 @@ export const SearchView: React.FC<SearchViewProps> = ({ onSelectPerson }) => {
     return () => {
       isCancelled = true;
     };
-  }, [query]);
+  }, [query, language]);
 
-  const getCategoryIcon = (cat: SearchResultItem['category']) => {
+  const getCategoryIcon = (cat: SearchCategory) => {
     switch (cat) {
       case 'Person':
         return <User className="w-4 h-4 text-secondary" />;
@@ -49,13 +52,36 @@ export const SearchView: React.FC<SearchViewProps> = ({ onSelectPerson }) => {
     }
   };
 
+  const getCategoryLabel = (cat: SearchCategory) => {
+    switch (cat) {
+      case 'Person':
+        return t('search.catPerson');
+      case 'Sizes & Details':
+        return t('search.catDetails');
+      case 'Preferences':
+        return t('search.catPreferences');
+      case 'Food & Allergies':
+        return t('search.catFood');
+      case 'Gift':
+        return t('search.catGift');
+      case 'Note':
+        return t('search.catNote');
+    }
+  };
+
+  const matchLabel = selectPluralForm(results.length, language, {
+    singular: t('search.matchSingular'),
+    few: t('search.matchFew'),
+    many: t('search.matchMany'),
+  });
+
   return (
     <div className="space-y-6 max-w-3xl">
       {/* Header */}
       <div className="pb-4 border-b border-border">
-        <h2 className="text-xl font-bold tracking-tight text-primary">Global Search</h2>
+        <h2 className="text-xl font-bold tracking-tight text-primary">{t('search.heading')}</h2>
         <p className="text-xs text-secondary mt-1">
-          Instantly query all sizes, allergies, perfumes, brands, notes, and gift ideas.
+          {t('search.subtitle')}
         </p>
       </div>
 
@@ -66,16 +92,16 @@ export const SearchView: React.FC<SearchViewProps> = ({ onSelectPerson }) => {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Try searching for 'Peanuts', 'EU 38', 'Aesop', 'Berlin', or 'Ring'..."
+          placeholder={t('search.placeholder')}
           autoFocus
-          className="w-full bg-surface border border-border text-primary text-sm rounded-xl pl-12 pr-4 py-3.5 placeholder:text-muted focus:outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/20 shadow-subtle transition-all"
+          className="w-full bg-surface border border-border text-primary text-sm rounded-xl pl-12 pr-16 py-3.5 placeholder:text-muted focus:outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/20 shadow-subtle transition-all"
         />
         {query && (
           <button
             onClick={() => setQuery('')}
             className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-secondary hover:text-primary"
           >
-            Clear
+            {t('common.clear')}
           </button>
         )}
       </div>
@@ -83,7 +109,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ onSelectPerson }) => {
       {/* Suggested Fast Queries */}
       {!query && (
         <div className="pt-2">
-          <p className="text-xs text-muted mb-2">Quick suggestions:</p>
+          <p className="text-xs text-muted mb-2">{t('search.quickSuggestions')}</p>
           <div className="flex flex-wrap gap-2">
             {['Peanuts', 'Aesop', 'EU 38', 'Ring', 'Coffee', 'Photography'].map((term) => (
               <button
@@ -103,7 +129,9 @@ export const SearchView: React.FC<SearchViewProps> = ({ onSelectPerson }) => {
         <div className="space-y-3">
           <div className="flex items-center justify-between text-xs text-secondary">
             <span>
-              {isSearching ? 'Searching...' : `${results.length} ${results.length === 1 ? 'match' : 'matches'} found`}
+              {isSearching
+                ? t('search.searching')
+                : `${results.length} ${matchLabel} ${t('search.foundSuffix')}`}
             </span>
           </div>
 
@@ -132,7 +160,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ onSelectPerson }) => {
                       {getCategoryIcon(match.category)}
                     </div>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-semibold text-primary group-hover:text-black">
                           {match.personName}
                         </span>
@@ -140,7 +168,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ onSelectPerson }) => {
                           size="sm"
                           variant={match.isAllergyAlert ? 'danger' : 'default'}
                         >
-                          {match.category}
+                          {getCategoryLabel(match.category)}
                         </Badge>
                       </div>
                       <p className="text-xs text-secondary mt-1 truncate">
@@ -156,7 +184,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ onSelectPerson }) => {
           ) : (
             !isSearching && (
               <div className="text-center py-12 bg-surface/50 rounded-xl border border-dashed border-border p-6 text-xs text-secondary">
-                No records found matching &ldquo;{query}&rdquo;.
+                {t('search.noResults', { query })}
               </div>
             )
           )}

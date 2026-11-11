@@ -6,6 +6,7 @@ import { GiftWithRecipient } from '../../hooks/useGifts';
 import { Button } from '../common/Button';
 import { Badge } from '../common/Badge';
 import { EmptyState } from '../common/EmptyState';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 interface GiftViewProps {
   gifts: GiftWithRecipient[];
@@ -26,6 +27,7 @@ export const GiftView: React.FC<GiftViewProps> = ({
   onSelectPerson,
   onUpdateGiftStatus,
 }) => {
+  const { t, locale } = useTranslation();
   const [selectedPersonFilter, setSelectedPersonFilter] = useState<string>('all');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
   const [selectedOccasionFilter, setSelectedOccasionFilter] = useState<string>('all');
@@ -36,8 +38,8 @@ export const GiftView: React.FC<GiftViewProps> = ({
     gifts.forEach((g) => {
       if (g.occasion) set.add(g.occasion.trim());
     });
-    return Array.from(set).sort();
-  }, [gifts]);
+    return Array.from(set).sort((a, b) => a.localeCompare(b, locale));
+  }, [gifts, locale]);
 
   // Filtered gifts
   const filteredGifts = useMemo(() => {
@@ -50,30 +52,40 @@ export const GiftView: React.FC<GiftViewProps> = ({
     });
   }, [gifts, selectedPersonFilter, selectedStatusFilter, selectedOccasionFilter]);
 
+  const getStatusLabel = (status: GiftStatus | 'all') => {
+    switch (status) {
+      case 'all': return t('gifts.statusAll');
+      case 'idea': return t('gifts.statusIdea');
+      case 'bought': return t('gifts.statusBought');
+      case 'given': return t('gifts.statusGiven');
+      case 'archived': return t('gifts.statusArchived');
+    }
+  };
+
   const getStatusBadge = (status: GiftStatus) => {
     switch (status) {
       case 'idea':
         return (
           <Badge size="sm" variant="default">
-            <Lightbulb className="w-3 h-3 mr-1 text-secondary" /> Idea
+            <Lightbulb className="w-3 h-3 mr-1 text-secondary" /> {t('gifts.statusIdea')}
           </Badge>
         );
       case 'bought':
         return (
           <Badge size="sm" variant="accent">
-            <Clock className="w-3 h-3 mr-1 text-accent-dark" /> Bought
+            <Clock className="w-3 h-3 mr-1 text-accent-dark" /> {t('gifts.statusBought')}
           </Badge>
         );
       case 'given':
         return (
           <Badge size="sm" variant="success">
-            <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-700" /> Given
+            <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-700" /> {t('gifts.statusGiven')}
           </Badge>
         );
       case 'archived':
         return (
           <Badge size="sm" variant="default">
-            <Archive className="w-3 h-3 mr-1 text-muted" /> Archived
+            <Archive className="w-3 h-3 mr-1 text-muted" /> {t('gifts.statusArchived')}
           </Badge>
         );
     }
@@ -84,9 +96,9 @@ export const GiftView: React.FC<GiftViewProps> = ({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-primary">Gift Ideas</h2>
+          <h2 className="text-xl font-bold tracking-tight text-primary">{t('gifts.heading')}</h2>
           <p className="text-xs text-secondary mt-1">
-            Keep track of thoughtful gift inspirations, purchases, and delivered surprises.
+            {t('gifts.subtitle')}
           </p>
         </div>
 
@@ -95,7 +107,7 @@ export const GiftView: React.FC<GiftViewProps> = ({
           onClick={onAddGift}
           icon={<Plus className="w-4 h-4" />}
         >
-          Add Gift Idea
+          {t('gifts.addGiftIdea')}
         </Button>
       </div>
 
@@ -103,14 +115,14 @@ export const GiftView: React.FC<GiftViewProps> = ({
       <div className="flex flex-wrap items-center gap-3">
         {/* Person filter */}
         <div className="flex items-center gap-1.5 text-xs text-secondary">
-          <label htmlFor="filter-person-select" className="shrink-0">Recipient:</label>
+          <label htmlFor="filter-person-select" className="shrink-0">{t('gifts.recipientFilter')}</label>
           <select
             id="filter-person-select"
             value={selectedPersonFilter}
             onChange={(e) => setSelectedPersonFilter(e.target.value)}
             className="bg-surface border border-border rounded-md px-2.5 py-1.5 text-xs text-primary focus:outline-none focus:border-primary/60 cursor-pointer"
           >
-            <option value="all">All People</option>
+            <option value="all">{t('gifts.allPeople')}</option>
             {people.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -122,14 +134,14 @@ export const GiftView: React.FC<GiftViewProps> = ({
         {/* Occasion filter (if any occasions exist) */}
         {distinctOccasions.length > 0 && (
           <div className="flex items-center gap-1.5 text-xs text-secondary">
-            <label htmlFor="filter-occasion-select" className="shrink-0">Occasion:</label>
+            <label htmlFor="filter-occasion-select" className="shrink-0">{t('gifts.occasionFilter')}</label>
             <select
               id="filter-occasion-select"
               value={selectedOccasionFilter}
               onChange={(e) => setSelectedOccasionFilter(e.target.value)}
               className="bg-surface border border-border rounded-md px-2.5 py-1.5 text-xs text-primary focus:outline-none focus:border-primary/60 cursor-pointer"
             >
-              <option value="all">All Occasions</option>
+              <option value="all">{t('gifts.allOccasions')}</option>
               {distinctOccasions.map((occ) => (
                 <option key={occ} value={occ}>
                   {occ}
@@ -140,18 +152,18 @@ export const GiftView: React.FC<GiftViewProps> = ({
         )}
 
         {/* Status filter tabs */}
-        <div className="flex items-center gap-1 bg-surface border border-border p-1 rounded-lg text-xs">
+        <div className="flex items-center gap-1 bg-surface border border-border p-1 rounded-lg text-xs flex-wrap">
           {(['all', 'idea', 'bought', 'given', 'archived'] as const).map((st) => (
             <button
               key={st}
               onClick={() => setSelectedStatusFilter(st)}
-              className={`px-2.5 py-1 rounded text-xs capitalize transition-colors ${
+              className={`px-2.5 py-1 rounded text-xs transition-colors ${
                 selectedStatusFilter === st
                   ? 'bg-canvas text-primary font-semibold border border-border-subtle shadow-subtle'
                   : 'text-secondary hover:text-primary'
               }`}
             >
-              {st}
+              {getStatusLabel(st)}
             </button>
           ))}
         </div>
@@ -160,117 +172,120 @@ export const GiftView: React.FC<GiftViewProps> = ({
       {/* Gifts Grid */}
       {filteredGifts.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredGifts.map((gift) => (
-            <div
-              key={gift.id}
-              className="bg-surface border border-border rounded-xl p-5 shadow-subtle flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <button
-                      onClick={() => onSelectPerson(gift.personId)}
-                      className="text-xs text-secondary hover:text-primary hover:underline font-medium text-left block"
-                    >
-                      For {gift.recipientName}
-                      {gift.recipientRelationship ? ` (${gift.recipientRelationship})` : ''}
-                    </button>
-                    <h3 className="text-sm font-semibold text-primary mt-1">
-                      {gift.title}
-                    </h3>
+          {filteredGifts.map((gift) => {
+            const recipientDisplay = gift.recipientName || t('common.unknown');
+            return (
+              <div
+                key={gift.id}
+                className="bg-surface border border-border rounded-xl p-5 shadow-subtle flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <button
+                        onClick={() => onSelectPerson(gift.personId)}
+                        className="text-xs text-secondary hover:text-primary hover:underline font-medium text-left block"
+                      >
+                        {t('gifts.forPerson', { name: recipientDisplay })}
+                        {gift.recipientRelationship ? ` (${gift.recipientRelationship})` : ''}
+                      </button>
+                      <h3 className="text-sm font-semibold text-primary mt-1">
+                        {gift.title}
+                      </h3>
+                    </div>
+                    {getStatusBadge(gift.status)}
                   </div>
-                  {getStatusBadge(gift.status)}
+
+                  {/* Optional Gift Image */}
+                  {gift.imageUrl && (
+                    <div className="mt-3 rounded-lg overflow-hidden border border-border-subtle bg-canvas max-h-36 flex items-center justify-center">
+                      <img
+                        src={gift.imageUrl}
+                        alt={gift.title}
+                        className="w-full h-36 object-cover"
+                      />
+                    </div>
+                  )}
+
+                  {gift.description && (
+                    <p className="text-xs text-secondary mt-2.5 leading-relaxed">
+                      {gift.description}
+                    </p>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-2 mt-4 text-xs">
+                    {gift.price !== undefined && (
+                      <span className="font-semibold text-primary bg-canvas px-2 py-0.5 rounded border border-border-subtle">
+                        {gift.currency || '€'}{gift.price}
+                      </span>
+                    )}
+                    {gift.occasion && (
+                      <span className="text-secondary bg-canvas px-2 py-0.5 rounded border border-border-subtle">
+                        {gift.occasion}
+                      </span>
+                    )}
+                    {gift.url && (
+                      <a
+                        href={gift.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-primary hover:underline"
+                      >
+                        <span>{t('gifts.storeLink')}</span>
+                        <ExternalLink className="w-3 h-3 text-secondary" />
+                      </a>
+                    )}
+                  </div>
                 </div>
 
-                {/* Optional Gift Image */}
-                {gift.imageUrl && (
-                  <div className="mt-3 rounded-lg overflow-hidden border border-border-subtle bg-canvas max-h-36 flex items-center justify-center">
-                    <img
-                      src={gift.imageUrl}
-                      alt={gift.title}
-                      className="w-full h-36 object-cover"
-                    />
+                {/* Status Selector & Actions */}
+                <div className="mt-4 pt-3 border-t border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {(['idea', 'bought', 'given', 'archived'] as GiftStatus[]).map((st) => (
+                      <button
+                        key={st}
+                        onClick={() => onUpdateGiftStatus(gift.id, st)}
+                        className={`text-[10px] px-2 py-0.5 rounded transition-colors ${
+                          gift.status === st
+                            ? 'bg-primary text-white font-medium'
+                            : 'text-secondary hover:text-primary hover:bg-canvas'
+                        }`}
+                      >
+                        {getStatusLabel(st)}
+                      </button>
+                    ))}
                   </div>
-                )}
 
-                {gift.description && (
-                  <p className="text-xs text-secondary mt-2.5 leading-relaxed">
-                    {gift.description}
-                  </p>
-                )}
-
-                <div className="flex flex-wrap items-center gap-2 mt-4 text-xs">
-                  {gift.price !== undefined && (
-                    <span className="font-semibold text-primary bg-canvas px-2 py-0.5 rounded border border-border-subtle">
-                      {gift.currency || '€'}{gift.price}
-                    </span>
-                  )}
-                  {gift.occasion && (
-                    <span className="text-secondary bg-canvas px-2 py-0.5 rounded border border-border-subtle">
-                      {gift.occasion}
-                    </span>
-                  )}
-                  {gift.url && (
-                    <a
-                      href={gift.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                  <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                    <button
+                      onClick={() => onEditGift(gift)}
+                      className="p-1 text-secondary hover:text-primary rounded hover:bg-canvas"
+                      title={t('gifts.editGift')}
                     >
-                      <span>Store link</span>
-                      <ExternalLink className="w-3 h-3 text-secondary" />
-                    </a>
-                  )}
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (window.confirm(t('gifts.confirmDeleteGift', { title: gift.title }))) {
+                          onDeleteGift(gift.id);
+                        }
+                      }}
+                      className="p-1 text-secondary hover:text-red-600 rounded hover:bg-canvas"
+                      title={t('gifts.deleteGift')}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
-
-              {/* Status Selector & Actions */}
-              <div className="mt-4 pt-3 border-t border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                <div className="flex items-center gap-1">
-                  {(['idea', 'bought', 'given', 'archived'] as GiftStatus[]).map((st) => (
-                    <button
-                      key={st}
-                      onClick={() => onUpdateGiftStatus(gift.id, st)}
-                      className={`text-[10px] px-2 py-0.5 rounded capitalize transition-colors ${
-                        gift.status === st
-                          ? 'bg-primary text-white font-medium'
-                          : 'text-secondary hover:text-primary hover:bg-canvas'
-                      }`}
-                    >
-                      {st}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex items-center gap-1.5 self-end sm:self-auto">
-                  <button
-                    onClick={() => onEditGift(gift)}
-                    className="p-1 text-secondary hover:text-primary rounded hover:bg-canvas"
-                    title="Edit gift"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (window.confirm(`Delete "${gift.title}"?`)) {
-                        onDeleteGift(gift.id);
-                      }
-                    }}
-                    className="p-1 text-secondary hover:text-red-600 rounded hover:bg-canvas"
-                    title="Delete gift"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <EmptyState
           icon={<Gift className="w-5 h-5 text-secondary" />}
-          title="No gifts match your filter"
-          description="Try selecting a different recipient or status to find what you are looking for."
+          title={t('gifts.noGiftsMatchTitle')}
+          description={t('gifts.noGiftsMatchDesc')}
           action={
             <Button
               size="sm"
@@ -281,7 +296,7 @@ export const GiftView: React.FC<GiftViewProps> = ({
                 setSelectedOccasionFilter('all');
               }}
             >
-              Reset Filters
+              {t('gifts.resetFilters')}
             </Button>
           }
         />

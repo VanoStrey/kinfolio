@@ -6,6 +6,7 @@ import { usePeople } from './hooks/usePeople';
 import { useGifts, GiftWithRecipient } from './hooks/useGifts';
 import { usePersonDetails } from './hooks/usePersonDetails';
 import { ToastProvider } from './hooks/useToast';
+import { LanguageProvider } from './i18n/LanguageContext';
 import { AppLayout } from './components/layout/AppLayout';
 import { PersonList } from './components/people/PersonList';
 import { PersonDetailView } from './components/people/PersonDetailView';
@@ -18,6 +19,7 @@ import { SettingsView } from './components/settings/SettingsView';
 const MainApp: React.FC = () => {
   const [activeView, setActiveView] = useState<ActiveView>('people');
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+  const [selectedPersonInitialTab, setSelectedPersonInitialTab] = useState<PersonProfileTab>('details');
 
   // People hook
   const {
@@ -73,8 +75,9 @@ const MainApp: React.FC = () => {
     }
   };
 
-  const handleSelectPerson = (personId: string, _initialTab?: PersonProfileTab) => {
+  const handleSelectPerson = (personId: string, initialTab?: PersonProfileTab) => {
     setSelectedPersonId(personId);
+    setSelectedPersonInitialTab(initialTab || 'details');
     setActiveView('person-detail');
   };
 
@@ -188,7 +191,7 @@ const MainApp: React.FC = () => {
       onNavigate={handleNavigate}
       peopleCount={people.length}
       giftsCount={globalGifts.length}
-      onQuickAdd={handleOpenAddPerson}
+      onQuickAdd={activeView === 'gifts' ? () => handleOpenAddGift() : handleOpenAddPerson}
     >
       {/* People View */}
       {activeView === 'people' && (
@@ -209,6 +212,7 @@ const MainApp: React.FC = () => {
           person={selectedPerson}
           gifts={personGifts}
           notes={personNotes}
+          initialTab={selectedPersonInitialTab}
           onBack={handleBackToPeople}
           onEditPerson={handleOpenEditPerson}
           onDeletePerson={handleDeletePerson}
@@ -277,9 +281,11 @@ const MainApp: React.FC = () => {
 
 export const App: React.FC = () => {
   return (
-    <ToastProvider>
-      <MainApp />
-    </ToastProvider>
+    <LanguageProvider>
+      <ToastProvider>
+        <MainApp />
+      </ToastProvider>
+    </LanguageProvider>
   );
 };
 

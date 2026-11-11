@@ -3,6 +3,7 @@ import { GiftIdea, GiftStatus, CreateGiftInput, UpdateGiftInput } from '../types
 import { giftsRepository } from '../db/repositories/giftsRepository';
 import { peopleRepository } from '../db/repositories/peopleRepository';
 import { useToast } from './useToast';
+import { useTranslation } from '../i18n/LanguageContext';
 
 export interface GiftWithRecipient extends GiftIdea {
   recipientName: string;
@@ -14,6 +15,16 @@ export function useGifts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { showToast } = useToast();
+  const { t } = useTranslation();
+
+  const statusLabel = (status: GiftStatus) => {
+    switch (status) {
+      case 'idea': return t('gifts.statusIdea');
+      case 'bought': return t('gifts.statusBought');
+      case 'given': return t('gifts.statusGiven');
+      case 'archived': return t('gifts.statusArchived');
+    }
+  };
 
   const loadGifts = useCallback(async () => {
     try {
@@ -32,7 +43,7 @@ export function useGifts() {
         const recipient = peopleMap.get(g.personId);
         return {
           ...g,
-          recipientName: recipient?.name || 'Unknown',
+          recipientName: recipient?.name || '',
           recipientRelationship: recipient?.relationship,
         };
       });
@@ -54,10 +65,10 @@ export function useGifts() {
     try {
       const created = await giftsRepository.create(input);
       await loadGifts();
-      showToast(`Added gift idea: "${created.title}"`);
+      showToast(t('toasts.giftAdded', { title: created.title }));
       return created;
     } catch (err: any) {
-      showToast(err.message || 'Failed to add gift', 'error');
+      showToast(err.message || t('toasts.failedAddGift'), 'error');
       throw err;
     }
   };
@@ -68,10 +79,10 @@ export function useGifts() {
       setGifts((prev) =>
         prev.map((g) => (g.id === id ? { ...g, ...updated } : g))
       );
-      showToast('Gift updated');
+      showToast(t('toasts.giftUpdated'));
       return updated;
     } catch (err: any) {
-      showToast(err.message || 'Failed to update gift', 'error');
+      showToast(err.message || t('toasts.failedUpdateGift'), 'error');
       throw err;
     }
   };
@@ -82,9 +93,9 @@ export function useGifts() {
       setGifts((prev) =>
         prev.map((g) => (g.id === id ? { ...g, status } : g))
       );
-      showToast(`Marked as ${status}`);
+      showToast(t('toasts.giftStatusMarked', { status: statusLabel(status) }));
     } catch (err: any) {
-      showToast(err.message || 'Failed to update status', 'error');
+      showToast(err.message || t('toasts.failedUpdateGiftStatus'), 'error');
       throw err;
     }
   };
@@ -93,9 +104,9 @@ export function useGifts() {
     try {
       await giftsRepository.hardDelete(id);
       setGifts((prev) => prev.filter((g) => g.id !== id));
-      showToast('Gift removed');
+      showToast(t('toasts.giftRemoved'));
     } catch (err: any) {
-      showToast(err.message || 'Failed to delete gift', 'error');
+      showToast(err.message || t('toasts.failedDeleteGift'), 'error');
       throw err;
     }
   };

@@ -4,6 +4,7 @@ import { peopleRepository } from '../db/repositories/peopleRepository';
 import { settingsRepository } from '../db/repositories/settingsRepository';
 import { loadDemoData } from '../services/demoDataService';
 import { useToast } from './useToast';
+import { useTranslation } from '../i18n/LanguageContext';
 
 export function usePeople() {
   const [people, setPeople] = useState<Person[]>([]);
@@ -11,6 +12,7 @@ export function usePeople() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const { showToast } = useToast();
+  const { t } = useTranslation();
 
   const loadPeople = useCallback(async () => {
     try {
@@ -50,10 +52,10 @@ export function usePeople() {
     try {
       const created = await peopleRepository.create(input);
       setPeople((prev) => [created, ...prev]);
-      showToast(`Added ${created.name}`);
+      showToast(t('toasts.addedPerson', { name: created.name }));
       return created;
     } catch (err: any) {
-      showToast(err.message || 'Failed to add person', 'error');
+      showToast(err.message || t('toasts.failedAddPerson'), 'error');
       throw err;
     }
   };
@@ -62,10 +64,10 @@ export function usePeople() {
     try {
       const updated = await peopleRepository.update(id, input);
       setPeople((prev) => prev.map((p) => (p.id === id ? updated : p)));
-      showToast(`Updated ${updated.name}`);
+      showToast(t('toasts.updatedPerson', { name: updated.name }));
       return updated;
     } catch (err: any) {
-      showToast(err.message || 'Failed to update person', 'error');
+      showToast(err.message || t('toasts.failedUpdatePerson'), 'error');
       throw err;
     }
   };
@@ -73,23 +75,23 @@ export function usePeople() {
   const deletePerson = async (id: string, permanent = false): Promise<void> => {
     try {
       const target = people.find((p) => p.id === id);
-      const name = target?.name || 'Person';
+      const name = target?.name || t('common.unknown');
 
       if (permanent) {
         await peopleRepository.hardDelete(id);
         setPeople((prev) => prev.filter((p) => p.id !== id));
         setDeletedPeople((prev) => prev.filter((p) => p.id !== id));
-        showToast(`Permanently deleted ${name}`);
+        showToast(t('toasts.deletedPersonPermanent', { name }));
       } else {
         await peopleRepository.softDelete(id);
         setPeople((prev) => prev.filter((p) => p.id !== id));
         if (target) {
           setDeletedPeople((prev) => [{ ...target, isDeleted: true }, ...prev]);
         }
-        showToast(`Moved ${name} to trash`);
+        showToast(t('toasts.movedToTrash', { name }));
       }
     } catch (err: any) {
-      showToast(err.message || 'Failed to delete person', 'error');
+      showToast(err.message || t('toasts.failedDeletePerson'), 'error');
       throw err;
     }
   };
@@ -100,10 +102,10 @@ export function usePeople() {
       if (restored) {
         setDeletedPeople((prev) => prev.filter((p) => p.id !== id));
         setPeople((prev) => [restored, ...prev]);
-        showToast(`Restored ${restored.name}`);
+        showToast(t('toasts.restoredPerson', { name: restored.name }));
       }
     } catch (err: any) {
-      showToast(err.message || 'Failed to restore person', 'error');
+      showToast(err.message || t('toasts.failedRestorePerson'), 'error');
       throw err;
     }
   };
@@ -113,9 +115,9 @@ export function usePeople() {
       setLoading(true);
       await loadDemoData();
       await loadPeople();
-      showToast('Sample records loaded successfully');
+      showToast(t('toasts.sampleLoaded'));
     } catch (err: any) {
-      showToast(err.message || 'Failed to load demo data', 'error');
+      showToast(err.message || t('toasts.failedLoadDemo'), 'error');
     } finally {
       setLoading(false);
     }

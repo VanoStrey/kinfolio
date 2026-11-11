@@ -3,6 +3,7 @@ import { Person, CreatePersonInput, UpdatePersonInput } from '../../types/person
 import { Modal } from '../common/Modal';
 import { Input } from '../common/Input';
 import { Button } from '../common/Button';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 interface PersonFormModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export const PersonFormModal: React.FC<PersonFormModalProps> = ({
   onSave,
   initialPerson,
 }) => {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [relationship, setRelationship] = useState('');
   const [birthday, setBirthday] = useState('');
@@ -50,7 +52,7 @@ export const PersonFormModal: React.FC<PersonFormModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError('Please provide a name.');
+      setError(t('personForm.nameError'));
       return;
     }
 
@@ -94,14 +96,14 @@ export const PersonFormModal: React.FC<PersonFormModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={initialPerson ? 'Edit Profile' : 'Add New Person'}
-      subtitle="Fast capture — fill in what you know now, expand anytime."
+      title={initialPerson ? t('personForm.editTitle') : t('personForm.addTitle')}
+      subtitle={t('personForm.subtitle')}
       maxWidth="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
-          label="Full Name *"
-          placeholder="e.g. Maya Chen"
+          label={t('personForm.nameLabel')}
+          placeholder={t('personForm.namePlaceholder')}
           value={name}
           onChange={(e) => {
             setName(e.target.value);
@@ -113,15 +115,15 @@ export const PersonFormModal: React.FC<PersonFormModalProps> = ({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input
-            label="Relationship (optional)"
-            placeholder="e.g. Sister, Partner, Friend"
+            label={t('personForm.relationshipLabel')}
+            placeholder={t('personForm.relationshipPlaceholder')}
             value={relationship}
             onChange={(e) => setRelationship(e.target.value)}
           />
 
           <Input
-            label="Birthday (optional)"
-            placeholder="e.g. April 14 or 1994-04-14"
+            label={t('personForm.birthdayLabel')}
+            placeholder={t('personForm.birthdayPlaceholder')}
             value={birthday}
             onChange={(e) => setBirthday(e.target.value)}
           />
@@ -129,24 +131,24 @@ export const PersonFormModal: React.FC<PersonFormModalProps> = ({
 
         <div className="pt-2 border-t border-border-subtle">
           <label className="text-xs font-semibold text-secondary uppercase tracking-wider block mb-2">
-            Key Sizes (Optional)
+            {t('personForm.keySizesLabel')}
           </label>
           <div className="grid grid-cols-3 gap-2">
             <Input
-              label="Clothing"
-              placeholder="e.g. S / EU 36"
+              label={t('personDetail.clothingLabel')}
+              placeholder={t('personDetail.clothingPlaceholder')}
               value={clothingSize}
               onChange={(e) => setClothingSize(e.target.value)}
             />
             <Input
-              label="Shoes"
-              placeholder="e.g. EU 38"
+              label={t('personDetail.shoeLabel')}
+              placeholder={t('personDetail.shoePlaceholder')}
               value={shoeSize}
               onChange={(e) => setShoeSize(e.target.value)}
             />
             <Input
-              label="Ring"
-              placeholder="e.g. 16.5 mm"
+              label={t('personDetail.ringLabel')}
+              placeholder={t('personDetail.ringPlaceholder')}
               value={ringSize}
               onChange={(e) => setRingSize(e.target.value)}
             />
@@ -155,20 +157,20 @@ export const PersonFormModal: React.FC<PersonFormModalProps> = ({
 
         <div>
           <Input
-            label="Medical Allergies (if any)"
-            placeholder="e.g. Peanuts, Shellfish (comma separated)"
+            label={t('personForm.allergiesLabel')}
+            placeholder={t('personForm.allergiesPlaceholder')}
             value={allergiesInput}
             onChange={(e) => setAllergiesInput(e.target.value)}
-            hint="Strict medical allergies will show a red safety warning badge."
+            hint={t('personForm.allergiesHint')}
           />
         </div>
 
         <div className="flex items-center justify-end gap-2 pt-3 border-t border-border-subtle">
           <Button type="button" variant="ghost" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button type="submit" variant="primary">
-            {initialPerson ? 'Save Changes' : 'Create Person'}
+            {initialPerson ? t('personForm.saveChanges') : t('personForm.createPerson')}
           </Button>
         </div>
       </form>

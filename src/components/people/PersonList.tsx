@@ -4,6 +4,7 @@ import { Person, SortOption } from '../../types/person';
 import { PersonCard } from './PersonCard';
 import { Button } from '../common/Button';
 import { EmptyState } from '../common/EmptyState';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 interface PersonListProps {
   people: Person[];
@@ -24,6 +25,7 @@ export const PersonList: React.FC<PersonListProps> = ({
   onRestorePerson,
   onLoadDemoData,
 }) => {
+  const { t, locale } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('updated-desc');
   const [currentTab, setCurrentTab] = useState<'active' | 'trash'>('active');
@@ -54,25 +56,25 @@ export const PersonList: React.FC<PersonListProps> = ({
         case 'updated-desc':
           return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
         case 'name-asc':
-          return a.name.localeCompare(b.name);
+          return a.name.localeCompare(b.name, locale);
         case 'relationship-asc':
-          return (a.relationship || '').localeCompare(b.relationship || '');
+          return (a.relationship || '').localeCompare(b.relationship || '', locale);
         default:
           return 0;
       }
     });
 
     return result;
-  }, [people, deletedPeople, currentTab, searchQuery, sortBy]);
+  }, [people, deletedPeople, currentTab, searchQuery, sortBy, locale]);
 
   return (
     <div className="space-y-6">
       {/* Top Section Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-primary">People</h2>
+          <h2 className="text-xl font-bold tracking-tight text-primary">{t('personList.title')}</h2>
           <p className="text-xs text-secondary mt-1">
-            Small details, sizes, preferences and memories about those who matter.
+            {t('personList.subtitle')}
           </p>
         </div>
 
@@ -83,7 +85,7 @@ export const PersonList: React.FC<PersonListProps> = ({
               variant="secondary"
               onClick={onLoadDemoData}
             >
-              Load Sample Profiles
+              {t('personList.loadSampleProfiles')}
             </Button>
           )}
 
@@ -92,14 +94,14 @@ export const PersonList: React.FC<PersonListProps> = ({
             onClick={onAddPerson}
             icon={<Plus className="w-4 h-4" />}
           >
-            Add Person
+            {t('personList.addPerson')}
           </Button>
         </div>
       </div>
 
       {/* Filter & View Tabs (Active vs Trash) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Active / Trash toggle if deleted people exist */}
           {deletedPeople.length > 0 && (
             <div className="flex items-center bg-surface border border-border p-1 rounded-lg text-xs">
@@ -111,7 +113,7 @@ export const PersonList: React.FC<PersonListProps> = ({
                     : 'text-secondary hover:text-primary'
                 }`}
               >
-                Active ({people.length})
+                {t('personList.activeTab')} ({people.length})
               </button>
               <button
                 onClick={() => setCurrentTab('trash')}
@@ -122,7 +124,7 @@ export const PersonList: React.FC<PersonListProps> = ({
                 }`}
               >
                 <Trash2 className="w-3 h-3 text-secondary" />
-                <span>Trash ({deletedPeople.length})</span>
+                <span>{t('personList.trashTab')} ({deletedPeople.length})</span>
               </button>
             </div>
           )}
@@ -134,13 +136,14 @@ export const PersonList: React.FC<PersonListProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name, size, fragrance, brand, allergy..."
+              placeholder={t('personList.searchPlaceholder')}
               className="w-full bg-surface border border-border text-primary text-xs rounded-md pl-9 pr-8 py-2 placeholder:text-muted focus:outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/20 transition-all"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-secondary hover:text-primary"
+                aria-label={t('common.clear')}
               >
                 ×
               </button>
@@ -151,16 +154,16 @@ export const PersonList: React.FC<PersonListProps> = ({
         {/* Sorting options */}
         <div className="flex items-center gap-2 text-xs text-secondary self-end sm:self-auto">
           <SlidersHorizontal className="w-3.5 h-3.5" />
-          <span>Sort:</span>
+          <span>{t('personList.sortLabel')}</span>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortOption)}
-            aria-label="Sort people by"
+            aria-label={t('personList.sortAriaLabel')}
             className="bg-surface border border-border rounded-md px-2.5 py-1.5 text-xs text-primary focus:outline-none focus:border-primary/60 cursor-pointer"
           >
-            <option value="updated-desc">Recently updated</option>
-            <option value="name-asc">Name (A–Z)</option>
-            <option value="relationship-asc">Relationship</option>
+            <option value="updated-desc">{t('personList.sortUpdated')}</option>
+            <option value="name-asc">{t('personList.sortName')}</option>
+            <option value="relationship-asc">{t('personList.sortRelationship')}</option>
           </select>
         </div>
       </div>
@@ -181,25 +184,25 @@ export const PersonList: React.FC<PersonListProps> = ({
         ) : (
           <EmptyState
             icon={<UserPlus className="w-5 h-5 text-secondary" />}
-            title={searchQuery ? 'No matching people found' : 'No people added yet'}
+            title={searchQuery ? t('personList.noMatchesTitle') : t('personList.noPeopleTitle')}
             description={
               searchQuery
-                ? `No entries match "${searchQuery}". Try searching for another name, size, or detail.`
-                : 'Add your first person to start remembering their clothing sizes, food preferences, and gift ideas.'
+                ? t('personList.noMatchesDesc', { query: searchQuery })
+                : t('personList.noPeopleDesc')
             }
             action={
               searchQuery ? (
                 <Button size="sm" variant="secondary" onClick={() => setSearchQuery('')}>
-                  Reset Search
+                  {t('personList.resetSearch')}
                 </Button>
               ) : (
                 <div className="flex items-center gap-2">
                   <Button size="sm" variant="primary" onClick={onAddPerson} icon={<Plus className="w-3.5 h-3.5" />}>
-                    Add Your First Person
+                    {t('personList.addFirstPerson')}
                   </Button>
                   {onLoadDemoData && (
                     <Button size="sm" variant="secondary" onClick={onLoadDemoData}>
-                      Load Sample Profiles
+                      {t('personList.loadSampleProfiles')}
                     </Button>
                   )}
                 </div>
@@ -211,7 +214,7 @@ export const PersonList: React.FC<PersonListProps> = ({
         /* Trash Tab */
         <div className="space-y-3">
           <div className="bg-canvas border border-border-subtle p-3 rounded-lg text-xs text-secondary flex items-center justify-between">
-            <span>Deleted people are stored here and can be restored at any time.</span>
+            <span>{t('personList.trashBanner')}</span>
           </div>
 
           {filteredAndSortedPeople.length > 0 ? (
@@ -234,14 +237,14 @@ export const PersonList: React.FC<PersonListProps> = ({
                       onClick={() => onRestorePerson(person.id)}
                       icon={<RotateCcw className="w-3.5 h-3.5" />}
                     >
-                      Restore
+                      {t('personList.restore')}
                     </Button>
                   )}
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-xs text-muted text-center py-8">Trash is empty.</p>
+            <p className="text-xs text-muted text-center py-8">{t('personList.trashEmpty')}</p>
           )}
         </div>
       )}

@@ -3,21 +3,37 @@ import { PersonProfileTab } from '../types/navigation';
 import { peopleRepository } from '../db/repositories/peopleRepository';
 import { giftsRepository } from '../db/repositories/giftsRepository';
 import { notesRepository } from '../db/repositories/notesRepository';
+import { Language } from '../i18n/types';
+import { resolveTranslation } from '../i18n/helpers';
+
+export type SearchCategory =
+  | 'Person'
+  | 'Sizes & Details'
+  | 'Preferences'
+  | 'Food & Allergies'
+  | 'Gift'
+  | 'Note';
 
 export interface SearchResultItem {
   id: string;
   personId: string;
   personName: string;
-  category: 'Person' | 'Sizes & Details' | 'Preferences' | 'Food & Allergies' | 'Gift' | 'Note';
+  category: SearchCategory;
   targetTab: PersonProfileTab;
   title: string;
   snippet: string;
   isAllergyAlert?: boolean;
 }
 
-export async function searchAllRecords(rawQuery: string): Promise<SearchResultItem[]> {
+export async function searchAllRecords(
+  rawQuery: string,
+  language: Language = 'en'
+): Promise<SearchResultItem[]> {
   const query = rawQuery.trim().toLowerCase();
   if (query.length < 2) return [];
+
+  const t = (key: Parameters<typeof resolveTranslation>[1], params?: Record<string, string | number>) =>
+    resolveTranslation(language, key, params);
 
   const [people, gifts, notes] = await Promise.all([
     peopleRepository.getAll(),
@@ -40,30 +56,35 @@ export async function searchAllRecords(rawQuery: string): Promise<SearchResultIt
         category: 'Person',
         targetTab: 'details',
         title: person.name,
-        snippet: person.relationship ? `Relationship: ${person.relationship}` : 'Person profile',
+        snippet: person.relationship
+          ? t('search.snippetRelationship', { rel: person.relationship })
+          : t('search.snippetProfile'),
       });
     }
 
     // 2. Search Details & Custom Fields
     const details = person.details;
-    const sizes = [
-      details.clothingSize ? `Clothing: ${details.clothingSize}` : null,
-      details.shoeSize ? `Shoes: ${details.shoeSize}` : null,
-      details.ringSize ? `Ring: ${details.ringSize}` : null,
-      details.height ? `Height: ${details.height}` : null,
-    ].filter(Boolean) as string[];
+    const sizeEntries: Array<{ value?: string; key: 'snippetClothing' | 'snippetShoes' | 'snippetRing' | 'snippetHeight' }> = [
+      { value: details.clothingSize, key: 'snippetClothing' },
+      { value: details.shoeSize, key: 'snippetShoes' },
+      { value: details.ringSize, key: 'snippetRing' },
+      { value: details.height, key: 'snippetHeight' },
+    ];
 
-    for (const sizeStr of sizes) {
-      if (sizeStr.toLowerCase().includes(query)) {
-        results.push({
-          id: `search-size-${person.id}-${sizeStr}`,
-          personId: person.id,
-          personName: person.name,
-          category: 'Sizes & Details',
-          targetTab: 'details',
-          title: person.name,
-          snippet: sizeStr,
-        });
+    for (const entry of sizeEntries) {
+      if (entry.value) {
+        const snippet = t(`search.${entry.key}`, { val: entry.value });
+        if (entry.value.toLowerCase().includes(query) || snippet.toLowerCase().includes(query)) {
+          results.push({
+            id: `search-size-${person.id}-${entry.key}`,
+            personId: person.id,
+            personName: person.name,
+            category: 'Sizes & Details',
+            targetTab: 'details',
+            title: person.name,
+            snippet,
+          });
+        }
       }
     }
 
@@ -83,26 +104,29 @@ export async function searchAllRecords(rawQuery: string): Promise<SearchResultIt
 
     // 3. Search Preferences
     const prefs = person.preferences;
-    const prefCategories: Array<{ label: string; items: string[] }> = [
-      { label: 'Scents', items: prefs.scents },
-      { label: 'Brands', items: prefs.brands },
-      { label: 'Colors', items: prefs.colors },
-      { label: 'Hobbies', items: prefs.hobbies },
-      { label: 'Likes', items: prefs.likes },
-      { label: 'Dislikes', items: prefs.dislikes },
+    const prefCategories: Array<{
+      key: 'snippetScents' | 'snippetBrands' | 'snippetColors' | 'snippetHobbies' | 'snippetLikes' | 'snippetDislikes';
+      items: string[];
+    }> = [
+      { key: 'snippetScents', items: prefs.scents },
+      { key: 'snippetBrands', items: prefs.brands },
+      { key: 'snippetColors', items: prefs.colors },
+      { key: 'snippetHobbies', items: prefs.hobbies },
+      { key: 'snippetLikes', items: prefs.likes },
+      { key: 'snippetDislikes', items: prefs.dislikes },
     ];
 
     for (const cat of prefCategories) {
       for (const item of cat.items) {
         if (item.toLowerCase().includes(query)) {
           results.push({
-            id: `search-pref-${person.id}-${cat.label}-${item}`,
+            id: `search-pref-${person.id}-${cat.key}-${item}`,
             personId: person.id,
             personName: person.name,
             category: 'Preferences',
             targetTab: 'preferences',
             title: person.name,
-            snippet: `${cat.label}: ${item}`,
+            snippet: t(`search.${cat.key}`, { val: item }),
           });
         }
       }
@@ -118,7 +142,7 @@ export async function searchAllRecords(rawQuery: string): Promise<SearchResultIt
           category: 'Food & Allergies',
           targetTab: 'food',
           title: person.name,
-          snippet: `⚠️ Medical Allergy: ${allergy}`,
+          snippet: t('search.snippetAllergy', { val: allergy }),
           isAllergyAlert: true,
         });
       }
@@ -133,7 +157,7 @@ export async function searchAllRecords(rawQuery: string): Promise<SearchResultIt
           category: 'Food & Allergies',
           targetTab: 'food',
           title: person.name,
-          snippet: `Intolerance: ${intol}`,
+          snippet: t('search.snippetIntolerance', { val: intol }),
         });
       }
     }
@@ -147,7 +171,7 @@ export async function searchAllRecords(rawQuery: string): Promise<SearchResultIt
           category: 'Food & Allergies',
           targetTab: 'food',
           title: person.name,
-          snippet: `Dietary restriction: ${diet}`,
+          snippet: t('search.snippetDiet', { val: diet }),
         });
       }
     }
@@ -161,7 +185,7 @@ export async function searchAllRecords(rawQuery: string): Promise<SearchResultIt
           category: 'Food & Allergies',
           targetTab: 'food',
           title: person.name,
-          snippet: `Favorite food: ${fav}`,
+          snippet: t('search.snippetFavFood', { val: fav }),
         });
       }
     }
@@ -175,7 +199,7 @@ export async function searchAllRecords(rawQuery: string): Promise<SearchResultIt
           category: 'Food & Allergies',
           targetTab: 'food',
           title: person.name,
-          snippet: `Disliked food: ${dis}`,
+          snippet: t('search.snippetDisFood', { val: dis }),
         });
       }
     }
@@ -188,7 +212,7 @@ export async function searchAllRecords(rawQuery: string): Promise<SearchResultIt
         category: 'Food & Allergies',
         targetTab: 'food',
         title: person.name,
-        snippet: `Dining note: ${person.food.notes}`,
+        snippet: t('search.snippetDiningNote', { val: person.food.notes }),
       });
     }
   }
@@ -196,13 +220,24 @@ export async function searchAllRecords(rawQuery: string): Promise<SearchResultIt
   // 5. Search Gifts
   for (const gift of gifts) {
     const person = peopleMap.get(gift.personId);
-    const personName = person ? person.name : 'Unknown';
+    const personName = person ? person.name : t('common.unknown');
 
     if (
       gift.title.toLowerCase().includes(query) ||
       gift.description?.toLowerCase().includes(query) ||
       gift.occasion?.toLowerCase().includes(query)
     ) {
+      const statusKey =
+        gift.status === 'idea'
+          ? 'gifts.statusIdea'
+          : gift.status === 'bought'
+          ? 'gifts.statusBought'
+          : gift.status === 'given'
+          ? 'gifts.statusGiven'
+          : 'gifts.statusArchived';
+      const statusLabel = t(statusKey);
+      const detailsStr = `${statusLabel}${gift.price ? `, ${gift.currency || '€'}${gift.price}` : ''}`;
+
       results.push({
         id: `search-gift-${gift.id}`,
         personId: gift.personId,
@@ -210,7 +245,7 @@ export async function searchAllRecords(rawQuery: string): Promise<SearchResultIt
         category: 'Gift',
         targetTab: 'gifts',
         title: gift.title,
-        snippet: `Gift idea for ${personName} (${gift.status}${gift.price ? `, ${gift.currency || '€'}${gift.price}` : ''})`,
+        snippet: t('search.snippetGift', { name: personName, details: detailsStr }),
       });
     }
   }
@@ -218,7 +253,7 @@ export async function searchAllRecords(rawQuery: string): Promise<SearchResultIt
   // 6. Search Notes
   for (const note of notes) {
     const person = peopleMap.get(note.personId);
-    const personName = person ? person.name : 'Unknown';
+    const personName = person ? person.name : t('common.unknown');
 
     if (note.content.toLowerCase().includes(query)) {
       results.push({
@@ -227,7 +262,7 @@ export async function searchAllRecords(rawQuery: string): Promise<SearchResultIt
         personName,
         category: 'Note',
         targetTab: 'notes',
-        title: `Note for ${personName}`,
+        title: t('search.noteForTitle', { name: personName }),
         snippet: note.content,
       });
     }

@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Shield, Lock, Download, Upload, Trash2, Info, Check, HardDrive, RefreshCw } from 'lucide-react';
+import { Shield, Lock, Download, Upload, Trash2, Info, Check, HardDrive, RefreshCw, Globe } from 'lucide-react';
 import { exportAllData, importDataFromFile, clearAllLocalData } from '../../services/backupService';
 import { settingsRepository } from '../../db/repositories/settingsRepository';
 import { Button } from '../common/Button';
 import { Badge } from '../common/Badge';
+import { LanguageSwitcher } from '../common/LanguageSwitcher';
 import { useToast } from '../../hooks/useToast';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 interface SettingsViewProps {
   onDataReset: () => void;
@@ -15,6 +17,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onDataReset,
   onLoadDemoData,
 }) => {
+  const { t } = useTranslation();
   const [autoLockMinutes, setAutoLockMinutes] = useState('15');
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -24,7 +27,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   useEffect(() => {
     settingsRepository.get('autoLockMinutes', 15).then((val) => {
-      setAutoLockMinutes(String(val));
+      setAutoLockMinutes(val === 0 ? 'never' : String(val));
     });
   }, []);
 
@@ -32,7 +35,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     const val = e.target.value;
     setAutoLockMinutes(val);
     await settingsRepository.set('autoLockMinutes', val === 'never' ? 0 : parseInt(val, 10));
-    showToast('Auto-lock setting updated');
+    showToast(t('toasts.autoLockUpdated'));
   };
 
   const handleExport = async () => {
@@ -40,10 +43,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setIsExporting(true);
       await exportAllData();
       setExportSuccess(true);
-      showToast('Backup JSON downloaded');
+      showToast(t('toasts.backupDownloaded'));
       setTimeout(() => setExportSuccess(false), 2500);
     } catch (err: any) {
-      showToast(err.message || 'Export failed', 'error');
+      showToast(err.message || t('toasts.exportFailed'), 'error');
     } finally {
       setIsExporting(false);
     }
@@ -57,13 +60,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setIsImporting(true);
       const res = await importDataFromFile(file);
       if (res.success) {
-        showToast(`Successfully imported backup (${res.count} profiles)`);
+        showToast(t('toasts.backupImported', { count: res.count }));
         onDataReset();
       } else {
-        showToast(res.error || 'Import failed', 'error');
+        showToast(res.error || t('toasts.importFailed'), 'error');
       }
     } catch (err: any) {
-      showToast(err.message || 'Import error', 'error');
+      showToast(err.message || t('toasts.importError'), 'error');
     } finally {
       setIsImporting(false);
       if (fileInputRef.current) {
@@ -73,13 +76,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const handleClearAll = async () => {
-    if (window.confirm('Are you sure you want to completely erase all local records? This action is permanent and cannot be undone.')) {
+    if (window.confirm(t('settings.confirmErase'))) {
       try {
         await clearAllLocalData();
-        showToast('All local records cleared');
+        showToast(t('toasts.localCleared'));
         onDataReset();
       } catch (err: any) {
-        showToast(err.message || 'Failed to clear data', 'error');
+        showToast(err.message || t('toasts.clearFailed'), 'error');
       }
     }
   };
@@ -88,10 +91,33 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     <div className="space-y-8 max-w-2xl pb-12">
       {/* Header */}
       <div className="pb-4 border-b border-border">
-        <h2 className="text-xl font-bold tracking-tight text-primary">Settings</h2>
+        <h2 className="text-xl font-bold tracking-tight text-primary">{t('settings.heading')}</h2>
         <p className="text-xs text-secondary mt-1">
-          Manage local storage parameters, backups, sample profiles, and security.
+          {t('settings.subtitle')}
         </p>
+      </div>
+
+      {/* Interface Language Section */}
+      <div className="bg-surface border border-border rounded-xl p-6 shadow-subtle space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-accent/60 flex items-center justify-center text-accent-dark">
+            <Globe className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-primary">{t('settings.languageTitle')}</h3>
+            <p className="text-xs text-secondary">
+              {t('settings.languageDesc')}
+            </p>
+          </div>
+        </div>
+
+        <div className="pt-3 border-t border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <span className="text-xs font-medium text-primary block">{t('settings.languageLabel')}</span>
+            <p className="text-[11px] text-secondary">{t('settings.languageHint')}</p>
+          </div>
+          <LanguageSwitcher />
+        </div>
       </div>
 
       {/* Security & Cryptography Section */}
@@ -101,49 +127,49 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <Shield className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-primary">Storage & Security</h3>
+            <h3 className="text-sm font-semibold text-primary">{t('settings.securityTitle')}</h3>
             <p className="text-xs text-secondary">
-              Zero-knowledge architecture. All records are stored client-side in IndexedDB.
+              {t('settings.securityDesc')}
             </p>
           </div>
         </div>
 
         <div className="pt-3 border-t border-border-subtle space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <div className="flex items-start gap-2.5">
-              <Lock className="w-4 h-4 text-secondary mt-0.5" />
+              <Lock className="w-4 h-4 text-secondary mt-0.5 shrink-0" />
               <div>
-                <span className="text-xs font-medium text-primary block">Master Password & AES-GCM</span>
+                <span className="text-xs font-medium text-primary block">{t('settings.masterPasswordTitle')}</span>
                 <p className="text-[11px] text-secondary">
-                  Phase 3: Unencrypted local persistence. Full PBKDF2 + AES-GCM activates in Phase 4.
+                  {t('settings.masterPasswordDesc')}
                 </p>
               </div>
             </div>
-            <Badge size="sm" variant="default">
-              Phase 4 Target
+            <Badge size="sm" variant="default" className="shrink-0">
+              {t('settings.phase4Target')}
             </Badge>
           </div>
 
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex items-center justify-between pt-2 gap-3">
             <div>
               <label htmlFor="autolock-select" className="text-xs font-medium text-primary block">
-                Automatic Lock Inactivity Timeout
+                {t('settings.autoLockLabel')}
               </label>
               <p className="text-[11px] text-secondary">
-                Period of inactivity before locking the notebook.
+                {t('settings.autoLockDesc')}
               </p>
             </div>
             <select
               id="autolock-select"
               value={autoLockMinutes}
               onChange={handleAutoLockChange}
-              className="bg-canvas border border-border rounded-md px-2.5 py-1 text-xs text-primary focus:outline-none focus:border-primary/60 cursor-pointer"
+              className="bg-canvas border border-border rounded-md px-2.5 py-1 text-xs text-primary focus:outline-none focus:border-primary/60 cursor-pointer shrink-0"
             >
-              <option value="5">5 minutes</option>
-              <option value="15">15 minutes</option>
-              <option value="30">30 minutes</option>
-              <option value="60">1 hour</option>
-              <option value="never">Never (keep unlocked)</option>
+              <option value="5">{t('settings.min5')}</option>
+              <option value="15">{t('settings.min15')}</option>
+              <option value="30">{t('settings.min30')}</option>
+              <option value="60">{t('settings.hour1')}</option>
+              <option value="never">{t('settings.never')}</option>
             </select>
           </div>
         </div>
@@ -156,14 +182,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <HardDrive className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-primary">Data & Backups</h3>
+            <h3 className="text-sm font-semibold text-primary">{t('settings.backupsTitle')}</h3>
             <p className="text-xs text-secondary">
-              Export and import portable JSON snapshots of your notebook.
+              {t('settings.backupsDesc')}
             </p>
           </div>
         </div>
 
-        <div className="pt-3 border-t border-border-subtle flex flex-col sm:flex-row gap-3">
+        <div className="pt-3 border-t border-border-subtle flex flex-col sm:flex-row flex-wrap gap-3">
           <Button
             size="sm"
             variant="secondary"
@@ -171,7 +197,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             disabled={isExporting}
             icon={exportSuccess ? <Check className="w-3.5 h-3.5 text-accent-dark" /> : <Download className="w-3.5 h-3.5" />}
           >
-            {exportSuccess ? 'Downloaded!' : isExporting ? 'Exporting...' : 'Export JSON Backup'}
+            {exportSuccess
+              ? t('settings.downloadedBtn')
+              : isExporting
+              ? t('settings.exportingBtn')
+              : t('settings.exportBtn')}
           </Button>
 
           <div>
@@ -190,7 +220,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               disabled={isImporting}
               icon={<Upload className="w-3.5 h-3.5" />}
             >
-              {isImporting ? 'Importing...' : 'Import JSON Backup'}
+              {isImporting ? t('settings.importingBtn') : t('settings.importBtn')}
             </Button>
           </div>
 
@@ -200,7 +230,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             onClick={onLoadDemoData}
             icon={<RefreshCw className="w-3.5 h-3.5" />}
           >
-            Load Sample Profiles
+            {t('settings.loadDemoBtn')}
           </Button>
         </div>
       </div>
@@ -209,10 +239,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <div className="bg-surface border border-red-200/70 rounded-xl p-6 shadow-subtle space-y-3">
         <div className="flex items-center gap-2">
           <Trash2 className="w-4 h-4 text-status-danger-text" />
-          <h3 className="text-sm font-semibold text-status-danger-text">Danger Zone</h3>
+          <h3 className="text-sm font-semibold text-status-danger-text">{t('settings.dangerTitle')}</h3>
         </div>
         <p className="text-xs text-secondary leading-relaxed">
-          Irreversibly delete all local storage records, preferences, and custom fields from this browser.
+          {t('settings.dangerDesc')}
         </p>
         <div className="pt-2">
           <Button
@@ -220,7 +250,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             variant="danger"
             onClick={handleClearAll}
           >
-            Erase All Local Data
+            {t('settings.eraseBtn')}
           </Button>
         </div>
       </div>
@@ -229,18 +259,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <div className="p-6 bg-canvas border border-border-subtle rounded-xl text-xs space-y-2">
         <div className="flex items-center gap-2 text-primary font-medium">
           <Info className="w-4 h-4 text-secondary" />
-          <span>Little Details — v0.2.0 (Phase 3 Core Functionality)</span>
+          <span>{t('settings.aboutTitle')}</span>
         </div>
         <p className="text-secondary leading-relaxed">
-          &ldquo;Remember what matters.&rdquo; A minimalist, private digital notebook designed for keeping
-          track of the small details about loved ones.
+          {t('settings.aboutDesc')}
         </p>
-        <div className="pt-2 flex items-center gap-4 text-[11px] text-muted">
-          <span>IndexedDB local database</span>
+        <div className="pt-2 flex flex-wrap items-center gap-3 text-[11px] text-muted">
+          <span>{t('settings.aboutFooter1')}</span>
           <span>•</span>
-          <span>Zero external server dependencies</span>
+          <span>{t('settings.aboutFooter2')}</span>
           <span>•</span>
-          <span>No trackers</span>
+          <span>{t('settings.aboutFooter3')}</span>
         </div>
       </div>
     </div>
