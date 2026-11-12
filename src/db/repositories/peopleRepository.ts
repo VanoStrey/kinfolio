@@ -27,7 +27,9 @@ export const peopleRepository = {
       name: input.name.trim(),
       relationship: input.relationship?.trim() || undefined,
       birthday: input.birthday?.trim() || undefined,
-      avatarColor: input.avatarColor || '#DCE5DB',
+      bio: input.bio?.trim() || undefined,
+      photoUrl: input.photoUrl || undefined,
+      avatarColor: input.avatarColor || '#E8EEE4',
       starred: !!input.starred,
       details: {
         clothingSize: input.details?.clothingSize?.trim() || undefined,

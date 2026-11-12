@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ActiveView, PersonProfileTab } from './types/navigation';
 import { Person, CreatePersonInput, UpdatePersonInput } from './types/person';
 import { GiftIdea, CreateGiftInput, UpdateGiftInput } from './types/gift';
@@ -25,6 +25,7 @@ const MainApp: React.FC = () => {
   const {
     people,
     deletedPeople,
+    loading: peopleLoading,
     createPerson,
     updatePerson,
     deletePerson,
@@ -58,6 +59,18 @@ const MainApp: React.FC = () => {
     deleteNote: deletePersonNote,
     refresh: refreshPersonDetails,
   } = usePersonDetails(selectedPersonId);
+
+  // Sync gifts list after initial people/demo seeding completes
+  useEffect(() => {
+    if (!peopleLoading) {
+      refreshGifts();
+    }
+  }, [peopleLoading, people.length, refreshGifts]);
+
+  const handleLoadDemoData = async () => {
+    await reloadDemoData();
+    await refreshGifts();
+  };
 
   // Modals state
   const [isPersonModalOpen, setIsPersonModalOpen] = useState(false);
@@ -192,7 +205,6 @@ const MainApp: React.FC = () => {
       onNavigate={handleNavigate}
       peopleCount={people.length}
       giftsCount={globalGifts.length}
-      onQuickAdd={activeView === 'gifts' ? () => handleOpenAddGift() : handleOpenAddPerson}
     >
       {/* People View */}
       {activeView === 'people' && (
@@ -200,10 +212,11 @@ const MainApp: React.FC = () => {
           people={people}
           deletedPeople={deletedPeople}
           giftCounts={giftCountsMap}
+          loading={peopleLoading}
           onSelectPerson={handleSelectPerson}
           onAddPerson={handleOpenAddPerson}
           onRestorePerson={restorePerson}
-          onLoadDemoData={reloadDemoData}
+          onLoadDemoData={handleLoadDemoData}
         />
       )}
 
@@ -256,7 +269,7 @@ const MainApp: React.FC = () => {
       {activeView === 'settings' && (
         <SettingsView
           onDataReset={handleDataReset}
-          onLoadDemoData={reloadDemoData}
+          onLoadDemoData={handleLoadDemoData}
         />
       )}
 

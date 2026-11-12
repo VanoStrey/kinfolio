@@ -29,12 +29,12 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
 
   return (
     <div
-      className="inline-flex items-center gap-1.5"
+      className="inline-flex items-center gap-2"
       role="group"
       aria-label="Language switcher"
     >
-      {showIcon && <Globe className="w-3.5 h-3.5 text-secondary shrink-0" />}
-      <div className="inline-flex items-center bg-canvas border border-border rounded-md p-0.5">
+      {showIcon && <Globe className="w-4 h-4 text-secondary shrink-0" />}
+      <div className="inline-flex items-center bg-surface-soft border border-border rounded-full p-0.5">
         {(['en', 'ru'] as Language[]).map((lang) => {
           const isActive = language === lang;
           return (
@@ -43,12 +43,12 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
               type="button"
               onClick={() => handleSelect(lang)}
               aria-pressed={isActive}
-              className={`uppercase font-medium rounded transition-colors ${
-                compact ? 'text-[10px] px-1.5 py-0.5' : 'text-[11px] px-2.5 py-1'
+              className={`font-semibold rounded-full transition-[background-color,color] duration-[180ms] focus:outline-none focus-visible:ring-2 focus-visible:ring-green-700/40 ${
+                compact ? 'text-[11px] uppercase px-2.5 py-0.5' : 'text-[12.5px] px-3 py-1'
               } ${
                 isActive
-                  ? 'bg-surface text-primary font-semibold shadow-subtle border border-border-subtle'
-                  : 'text-secondary hover:text-primary border border-transparent'
+                  ? 'bg-surface-green text-green-900 shadow-soft'
+                  : 'text-secondary hover:text-primary'
               }`}
             >
               {compact ? lang : lang === 'en' ? 'English' : 'Русский'}

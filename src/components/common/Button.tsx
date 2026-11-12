@@ -1,7 +1,7 @@
 import React from 'react';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'accent' | 'danger';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'accent' | 'soft' | 'danger';
   size?: 'sm' | 'md' | 'lg';
   icon?: React.ReactNode;
   children?: React.ReactNode;
@@ -16,20 +16,22 @@ export const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props
 }) => {
-  const baseStyles = 'inline-flex items-center justify-center font-medium transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-dark/20 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]';
+  const baseStyles =
+    'inline-flex items-center justify-center font-semibold tracking-[-0.005em] transition-[background-color,border-color,color,opacity] duration-[180ms] focus:outline-none focus-visible:ring-2 focus-visible:ring-green-700/40 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none select-none';
 
   const sizeStyles = {
-    sm: 'text-xs px-2.5 py-1.5 rounded gap-1.5',
-    md: 'text-sm px-3.5 py-2 rounded-md gap-2',
-    lg: 'text-sm px-4 py-2.5 rounded-md gap-2.5',
+    sm: 'h-8 text-[13px] px-3 rounded-sm gap-1.5',
+    md: 'h-10 text-[13.5px] px-4 rounded-md gap-2',
+    lg: 'h-11 text-[14px] px-5 rounded-md gap-2.5',
   };
 
   const variantStyles = {
-    primary: 'bg-primary text-white hover:bg-black/90 shadow-subtle',
-    secondary: 'bg-surface text-primary border border-border hover:bg-canvas hover:border-border-strong shadow-subtle',
-    ghost: 'text-secondary hover:text-primary hover:bg-canvas/80',
-    accent: 'bg-accent text-accent-dark hover:bg-accent-hover font-medium',
-    danger: 'bg-status-danger text-status-danger-text hover:bg-red-100 border border-red-200/60',
+    primary: 'bg-green-700 text-inverse hover:bg-green-900 shadow-soft',
+    secondary: 'bg-surface text-primary border border-border hover:bg-surface-soft hover:border-green-300 shadow-soft',
+    soft: 'bg-surface-green text-green-900 hover:bg-green-300/40',
+    accent: 'bg-surface-green text-green-900 hover:bg-green-300/40',
+    ghost: 'text-secondary hover:text-primary hover:bg-surface-soft',
+    danger: 'bg-[#FAF0EF] text-danger border border-danger/30 hover:bg-[#F5E2E0] hover:border-danger/50',
   };
 
   return (
@@ -38,7 +40,7 @@ export const Button: React.FC<ButtonProps> = ({
       disabled={disabled}
       {...props}
     >
-      {icon && <span className="shrink-0">{icon}</span>}
+      {icon && <span className="shrink-0 flex items-center">{icon}</span>}
       {children}
     </button>
   );

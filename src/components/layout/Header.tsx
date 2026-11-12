@@ -1,19 +1,15 @@
 import React from 'react';
-import { Plus } from 'lucide-react';
 import { ActiveView } from '../../types/navigation';
-import { Button } from '../common/Button';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { LanguageSwitcher } from '../common/LanguageSwitcher';
 
 interface HeaderProps {
   activeView: ActiveView;
-  onQuickAdd?: () => void;
   title?: string;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   activeView,
-  onQuickAdd,
   title,
 }) => {
   const { t } = useTranslation();
@@ -37,26 +33,18 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="md:hidden sticky top-0 z-30 bg-surface/90 backdrop-blur-md border-b border-border px-4 py-3 flex items-center justify-between gap-2">
-      <div className="flex items-center gap-2 min-w-0">
-        <div className="w-6 h-6 rounded bg-accent flex items-center justify-center text-primary font-serif font-bold text-xs shrink-0">
+    <header className="md:hidden sticky top-0 z-30 bg-surface/95 backdrop-blur-md border-b border-border px-4 h-14 flex items-center justify-between gap-2">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <div className="w-7 h-7 rounded-sm bg-surface-green border border-green-300/60 flex items-center justify-center text-green-900 font-semibold text-[13px] shrink-0">
           L
         </div>
-        <h1 className="text-sm font-semibold text-primary truncate">{getHeaderTitle()}</h1>
+        <span className="text-[15px] font-semibold text-primary truncate">
+          {getHeaderTitle()}
+        </span>
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
         <LanguageSwitcher compact />
-        {onQuickAdd && (activeView === 'people' || activeView === 'gifts') && (
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={onQuickAdd}
-            icon={<Plus className="w-3.5 h-3.5" />}
-          >
-            {t('nav.add')}
-          </Button>
-        )}
       </div>
     </header>
   );

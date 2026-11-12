@@ -3,6 +3,9 @@ import { Search, User, Gift, FileText, AlertTriangle, ArrowRight } from 'lucide-
 import { PersonProfileTab } from '../../types/navigation';
 import { searchAllRecords, SearchResultItem, SearchCategory } from '../../services/searchService';
 import { Badge } from '../common/Badge';
+import { SearchInput } from '../common/SearchInput';
+import { EmptyState } from '../common/EmptyState';
+import { PageHeader } from '../layout/PageHeader';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { selectPluralForm } from '../../i18n/helpers';
 
@@ -40,15 +43,15 @@ export const SearchView: React.FC<SearchViewProps> = ({ onSelectPerson }) => {
   const getCategoryIcon = (cat: SearchCategory) => {
     switch (cat) {
       case 'Person':
-        return <User className="w-4 h-4 text-secondary" />;
+        return <User className="w-4 h-4 text-green-700" />;
       case 'Gift':
-        return <Gift className="w-4 h-4 text-secondary" />;
+        return <Gift className="w-4 h-4 text-green-700" />;
       case 'Food & Allergies':
-        return <AlertTriangle className="w-4 h-4 text-red-600" />;
+        return <AlertTriangle className="w-4 h-4 text-danger" />;
       case 'Note':
-        return <FileText className="w-4 h-4 text-secondary" />;
+        return <FileText className="w-4 h-4 text-green-700" />;
       default:
-        return <Search className="w-4 h-4 text-secondary" />;
+        return <Search className="w-4 h-4 text-green-700" />;
     }
   };
 
@@ -76,46 +79,30 @@ export const SearchView: React.FC<SearchViewProps> = ({ onSelectPerson }) => {
   });
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      {/* Header */}
-      <div className="pb-4 border-b border-border">
-        <h2 className="text-xl font-bold tracking-tight text-primary">{t('search.heading')}</h2>
-        <p className="text-xs text-secondary mt-1">
-          {t('search.subtitle')}
-        </p>
-      </div>
+    <div className="space-y-7 max-w-3xl">
+      <PageHeader title={t('search.heading')} subtitle={t('search.subtitle')} />
 
-      {/* Large Minimalist Search Input */}
-      <div className="relative">
-        <Search className="w-5 h-5 text-secondary absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t('search.placeholder')}
-          autoFocus
-          className="w-full bg-surface border border-border text-primary text-sm rounded-xl pl-12 pr-16 py-3.5 placeholder:text-muted focus:outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/20 shadow-subtle transition-all"
-        />
-        {query && (
-          <button
-            onClick={() => setQuery('')}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-secondary hover:text-primary"
-          >
-            {t('common.clear')}
-          </button>
-        )}
-      </div>
+      {/* Large Search Input */}
+      <SearchInput
+        size="lg"
+        value={query}
+        onChange={setQuery}
+        placeholder={t('search.placeholder')}
+        clearLabel={t('common.clear')}
+        autoFocus
+      />
 
       {/* Suggested Fast Queries */}
       {!query && (
-        <div className="pt-2">
-          <p className="text-xs text-muted mb-2">{t('search.quickSuggestions')}</p>
+        <div className="space-y-2.5">
+          <p className="text-[13px] font-medium text-secondary">{t('search.quickSuggestions')}</p>
           <div className="flex flex-wrap gap-2">
             {['Peanuts', 'Aesop', 'EU 38', 'Ring', 'Coffee', 'Photography'].map((term) => (
               <button
                 key={term}
+                type="button"
                 onClick={() => setQuery(term)}
-                className="text-xs bg-surface border border-border px-3 py-1.5 rounded-lg text-secondary hover:text-primary hover:bg-canvas transition-colors"
+                className="text-[13px] font-medium bg-surface border border-border px-3.5 py-1.5 rounded-full text-secondary hover:text-green-900 hover:bg-surface-green/60 hover:border-green-300 transition-[background-color,border-color,color] duration-[180ms] focus:outline-none focus-visible:ring-2 focus-visible:ring-green-700/40"
               >
                 {term}
               </button>
@@ -126,8 +113,8 @@ export const SearchView: React.FC<SearchViewProps> = ({ onSelectPerson }) => {
 
       {/* Search results */}
       {query.trim().length >= 2 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs text-secondary">
+        <div className="space-y-3.5">
+          <div className="flex items-center justify-between text-[13px] text-secondary font-medium">
             <span>
               {isSearching
                 ? t('search.searching')
@@ -136,7 +123,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ onSelectPerson }) => {
           </div>
 
           {results.length > 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {results.map((match) => (
                 <div
                   key={match.id}
@@ -149,19 +136,25 @@ export const SearchView: React.FC<SearchViewProps> = ({ onSelectPerson }) => {
                       onSelectPerson(match.personId, match.targetTab);
                     }
                   }}
-                  className={`bg-surface border rounded-xl p-4 transition-all duration-150 cursor-pointer shadow-subtle flex items-center justify-between gap-4 group ${
+                  className={`bg-surface border rounded-lg p-4 transition-[border-color,box-shadow,background-color] duration-[180ms] cursor-pointer hover:shadow-soft flex items-center justify-between gap-4 group focus:outline-none focus-visible:ring-2 focus-visible:ring-green-700/40 ${
                     match.isAllergyAlert
-                      ? 'border-red-200 hover:border-red-400 bg-red-50/20'
-                      : 'border-border hover:border-primary/40'
+                      ? 'border-danger/35 hover:border-danger/60 bg-[#FAF0EF]/35'
+                      : 'border-border hover:border-green-300'
                   }`}
                 >
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-canvas border border-border-subtle flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="flex items-start gap-3.5 min-w-0">
+                    <div
+                      className={`w-9 h-9 rounded-md border flex items-center justify-center shrink-0 mt-0.5 ${
+                        match.isAllergyAlert
+                          ? 'bg-[#FAF0EF] border-danger/25'
+                          : 'bg-surface-soft border-border'
+                      }`}
+                    >
                       {getCategoryIcon(match.category)}
                     </div>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-semibold text-primary group-hover:text-black">
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <span className="text-[15.5px] font-semibold text-primary group-hover:text-green-900 transition-colors">
                           {match.personName}
                         </span>
                         <Badge
@@ -171,21 +164,23 @@ export const SearchView: React.FC<SearchViewProps> = ({ onSelectPerson }) => {
                           {getCategoryLabel(match.category)}
                         </Badge>
                       </div>
-                      <p className="text-xs text-secondary mt-1 truncate">
+                      <p className="text-[13.5px] text-secondary mt-1 truncate leading-[1.45]">
                         {match.snippet}
                       </p>
                     </div>
                   </div>
 
-                  <ArrowRight className="w-4 h-4 text-secondary/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+                  <ArrowRight className="w-4 h-4 text-muted group-hover:text-green-700 group-hover:translate-x-0.5 transition-all shrink-0" />
                 </div>
               ))}
             </div>
           ) : (
             !isSearching && (
-              <div className="text-center py-12 bg-surface/50 rounded-xl border border-dashed border-border p-6 text-xs text-secondary">
-                {t('search.noResults', { query })}
-              </div>
+              <EmptyState
+                icon={<Search className="w-5 h-5 text-green-700" />}
+                title={t('personList.noMatchesTitle')}
+                description={t('search.noResults', { query })}
+              />
             )
           )}
         </div>

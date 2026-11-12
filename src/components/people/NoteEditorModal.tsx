@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Note } from '../../types/note';
 import { Modal } from '../common/Modal';
+import { Input } from '../common/Input';
+import { Textarea } from '../common/Textarea';
 import { Button } from '../common/Button';
 import { useTranslation } from '../../i18n/LanguageContext';
 
@@ -52,40 +54,27 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
       maxWidth="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="text-xs font-medium text-secondary block mb-1">
-            {t('notes.categoryLabel')}
-          </label>
-          <input
-            type="text"
-            placeholder={t('notes.categoryPlaceholder')}
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="w-full bg-surface border border-border text-xs rounded-md p-2 text-primary focus:outline-none focus:border-primary/60"
-          />
-        </div>
+        <Input
+          label={t('notes.categoryLabel')}
+          placeholder={t('notes.categoryPlaceholder')}
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+        />
 
-        <div>
-          <label className="text-xs font-medium text-secondary block mb-1">
-            {t('notes.contentLabel')}
-          </label>
-          <textarea
-            value={content}
-            onChange={(e) => {
-              setContent(e.target.value);
-              if (error) setError('');
-            }}
-            placeholder={t('notes.contentPlaceholder')}
-            rows={5}
-            autoFocus
-            className={`w-full bg-canvas border rounded-md p-3 text-xs text-primary placeholder:text-muted focus:outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/20 ${
-              error ? 'border-red-400' : 'border-border'
-            }`}
-          />
-          {error && <span className="text-xs text-status-danger-text mt-1 block">{error}</span>}
-        </div>
+        <Textarea
+          label={t('notes.contentLabel')}
+          value={content}
+          onChange={(e) => {
+            setContent(e.target.value);
+            if (error) setError('');
+          }}
+          placeholder={t('notes.contentPlaceholder')}
+          rows={5}
+          error={error}
+          autoFocus
+        />
 
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-border-subtle">
+        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
           <Button type="button" variant="ghost" onClick={onClose}>
             {t('common.cancel')}
           </Button>

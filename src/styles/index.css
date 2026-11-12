@@ -2,25 +2,69 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Base surfaces & borders */
+  --color-background: #F6F7F2;
+  --color-surface: #FFFFFF;
+  --color-surface-soft: #F0F3EB;
+  --color-surface-green: #E8EEE4;
+  --color-border: #E5E8DF;
+
+  /* Green identity palette */
+  --color-green-900: #34483A;
+  --color-green-700: #526B56;
+  --color-green-600: #69836A;
+  --color-green-300: #B8C9B5;
+  --color-green-100: #E8EEE4;
+
+  /* Typography colors */
+  --color-text-primary: #292E29;
+  --color-text-secondary: #737B70;
+  --color-text-muted: #9AA095;
+  --color-text-inverse: #FFFFFF;
+
+  /* Semantic colors */
+  --color-success: #66836A;
+  --color-warning: #B58B55;
+  --color-danger: #B76E67;
+  --color-info: #738A91;
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+
+  /* Shadows */
+  --shadow-soft: 0 2px 10px rgba(41, 46, 41, 0.04);
+  --shadow-modal: 0 12px 32px rgba(41, 46, 41, 0.09);
+
+  /* Transitions */
+  --transition-fast: 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
 @layer base {
   * {
-    border-color: #E8E8E3;
+    border-color: var(--color-border);
   }
 
   html {
     color-scheme: light;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 
   body {
-    background-color: #F7F7F4;
-    color: #242623;
-    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+    font-size: 14px;
+    line-height: 1.55;
     min-height: 100vh;
+    overflow-x: hidden;
   }
 
-  /* Custom subtle scrollbars */
+  /* Subtle custom scrollbars */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -31,21 +75,36 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #D8D8D0;
+    background: #D4DBD0;
     border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #BEBEB4;
+    background: #B8C9B5;
   }
 }
 
 @layer utilities {
-  .subtle-border {
-    border: 1px solid #E8E8E3;
+  .pb-safe {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
   }
 
-  .subtle-divider {
-    border-color: #EFEFEA;
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

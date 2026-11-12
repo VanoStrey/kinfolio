@@ -2,6 +2,7 @@ import React from 'react';
 import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
 import { Header } from './Header';
+import { ContentContainer } from './ContentContainer';
 import { ActiveView } from '../../types/navigation';
 
 interface AppLayoutProps {
@@ -9,7 +10,6 @@ interface AppLayoutProps {
   onNavigate: (view: ActiveView) => void;
   peopleCount: number;
   giftsCount: number;
-  onQuickAdd?: () => void;
   children: React.ReactNode;
 }
 
@@ -18,13 +18,12 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   onNavigate,
   peopleCount,
   giftsCount,
-  onQuickAdd,
   children,
 }) => {
   return (
     <div className="min-h-screen bg-canvas text-primary flex flex-col md:flex-row antialiased">
-      {/* Desktop Sidebar */}
-      <div className="hidden md:block">
+      {/* Desktop & Tablet Sidebar */}
+      <div className="hidden md:block shrink-0">
         <Sidebar
           activeView={activeView}
           onNavigate={onNavigate}
@@ -34,16 +33,13 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
       </div>
 
       {/* Mobile Top Header */}
-      <Header
-        activeView={activeView}
-        onQuickAdd={onQuickAdd}
-      />
+      <Header activeView={activeView} />
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto pb-20 md:pb-8">
-        <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 md:px-8 pt-6 md:pt-8">
+      <main className="flex-1 min-w-0 pb-24 md:pb-10">
+        <ContentContainer>
           {children}
-        </div>
+        </ContentContainer>
       </main>
 
       {/* Mobile Bottom Navigation */}

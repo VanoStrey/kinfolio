@@ -38,6 +38,8 @@ export interface Person {
   name: string;
   relationship?: string;
   birthday?: string;
+  bio?: string;
+  photoUrl?: string;
   avatarColor?: string;
   starred?: boolean;
   details: PersonDetails;
@@ -58,6 +60,8 @@ export type CreatePersonInput = {
   name: string;
   relationship?: string;
   birthday?: string;
+  bio?: string;
+  photoUrl?: string;
   avatarColor?: string;
   starred?: boolean;
   details?: Partial<PersonDetails>;
@@ -69,6 +73,8 @@ export type UpdatePersonInput = {
   name?: string;
   relationship?: string;
   birthday?: string;
+  bio?: string;
+  photoUrl?: string;
   avatarColor?: string;
   starred?: boolean;
   details?: Partial<PersonDetails>;

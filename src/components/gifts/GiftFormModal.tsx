@@ -4,7 +4,10 @@ import { Person } from '../../types/person';
 import { GiftIdea, GiftStatus, CreateGiftInput, UpdateGiftInput } from '../../types/gift';
 import { processImageFile } from '../../services/imageService';
 import { Modal } from '../common/Modal';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 import { Input } from '../common/Input';
+import { Textarea } from '../common/Textarea';
+import { Select } from '../common/Select';
 import { Button } from '../common/Button';
 import { useTranslation } from '../../i18n/LanguageContext';
 
@@ -37,6 +40,7 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
   const [status, setStatus] = useState<GiftStatus>('idea');
   const [error, setError] = useState('');
   const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -63,7 +67,35 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
       setStatus('idea');
     }
     setError('');
+    setShowUnsavedConfirm(false);
   }, [initialGift, defaultPersonId, people, isOpen]);
+
+  const isDirty = (() => {
+    if (!isOpen) return false;
+    if (initialGift) {
+      return (
+        title !== initialGift.title ||
+        description !== (initialGift.description || '') ||
+        price !== (initialGift.price ? String(initialGift.price) : '') ||
+        currency !== (initialGift.currency || '€') ||
+        occasion !== (initialGift.occasion || '') ||
+        url !== (initialGift.url || '') ||
+        imageUrl !== initialGift.imageUrl ||
+        status !== initialGift.status
+      );
+    }
+    return Boolean(
+      title.trim() || description.trim() || price.trim() || occasion.trim() || url.trim() || imageUrl
+    );
+  })();
+
+  const handleAttemptClose = () => {
+    if (isDirty) {
+      setShowUnsavedConfirm(true);
+    } else {
+      onClose();
+    }
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -81,10 +113,6 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
         fileInputRef.current.value = '';
       }
     }
-  };
-
-  const handleRemoveImage = () => {
-    setImageUrl(undefined);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -114,170 +142,165 @@ export const GiftFormModal: React.FC<GiftFormModalProps> = ({
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={initialGift ? t('giftForm.editTitle') : t('giftForm.addTitle')}
-      subtitle={t('giftForm.subtitle')}
-      maxWidth="md"
-    >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="gift-recipient-select" className="text-xs font-medium text-secondary block mb-1">
-            {t('giftForm.recipientLabel')}
-          </label>
-          <select
-            id="gift-recipient-select"
+    <>
+      <Modal
+        isOpen={isOpen}
+        onClose={handleAttemptClose}
+        title={initialGift ? t('giftForm.editTitle') : t('giftForm.addTitle')}
+        subtitle={t('giftForm.subtitle')}
+        maxWidth="md"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Select
+            label={t('giftForm.recipientLabel')}
             value={personId}
             onChange={(e) => setPersonId(e.target.value)}
             disabled={!!initialGift}
-            className="w-full bg-surface border border-border text-primary text-xs rounded-md p-2.5 focus:outline-none focus:border-primary/60 cursor-pointer disabled:bg-canvas disabled:text-secondary"
           >
             {people.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name} {p.relationship ? `(${p.relationship})` : ''}
               </option>
             ))}
-          </select>
-        </div>
+          </Select>
 
-        <Input
-          label={t('giftForm.titleLabel')}
-          placeholder={t('giftForm.titlePlaceholder')}
-          value={title}
-          onChange={(e) => {
-            setTitle(e.target.value);
-            if (error) setError('');
-          }}
-          error={error}
-          autoFocus
-        />
+          <Input
+            label={t('giftForm.titleLabel')}
+            placeholder={t('giftForm.titlePlaceholder')}
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              if (error) setError('');
+            }}
+            error={error}
+            autoFocus
+          />
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex gap-2">
-            <div className="w-16 shrink-0">
-              <label htmlFor="gift-currency-select" className="text-xs font-medium text-secondary block mb-1">
-                {t('giftForm.currencyLabel')}
-              </label>
-              <select
-                id="gift-currency-select"
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                className="w-full bg-surface border border-border text-primary text-xs rounded-md py-2 px-1 focus:outline-none focus:border-primary/60"
-              >
-                <option value="€">€</option>
-                <option value="$">$</option>
-                <option value="£">£</option>
-                <option value="₽">₽</option>
-              </select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex gap-2">
+              <div className="w-20 shrink-0">
+                <Select
+                  label={t('giftForm.currencyLabel')}
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                >
+                  <option value="€">€</option>
+                  <option value="$">$</option>
+                  <option value="£">£</option>
+                  <option value="₽">₽</option>
+                </Select>
+              </div>
+              <div className="flex-1">
+                <Input
+                  label={t('giftForm.priceLabel')}
+                  type="number"
+                  placeholder="45"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                />
+              </div>
             </div>
-            <div className="flex-1">
-              <Input
-                label={t('giftForm.priceLabel')}
-                type="number"
-                placeholder="45"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-              />
-            </div>
+
+            <Input
+              label={t('giftForm.occasionLabel')}
+              placeholder={t('giftForm.occasionPlaceholder')}
+              value={occasion}
+              onChange={(e) => setOccasion(e.target.value)}
+            />
           </div>
 
           <Input
-            label={t('giftForm.occasionLabel')}
-            placeholder={t('giftForm.occasionPlaceholder')}
-            value={occasion}
-            onChange={(e) => setOccasion(e.target.value)}
+            label={t('giftForm.urlLabel')}
+            placeholder="https://..."
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
           />
-        </div>
 
-        <Input
-          label={t('giftForm.urlLabel')}
-          placeholder="https://..."
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-        />
-
-        <div>
-          <label className="text-xs font-medium text-secondary block mb-1">
-            {t('giftForm.notesLabel')}
-          </label>
-          <textarea
+          <Textarea
+            label={t('giftForm.notesLabel')}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder={t('giftForm.notesPlaceholder')}
             rows={2}
-            className="w-full bg-surface border border-border text-xs rounded-md p-2.5 text-primary placeholder:text-muted focus:outline-none focus:border-primary/60"
           />
-        </div>
 
-        {/* Local Image Upload */}
-        <div>
-          <label className="text-xs font-medium text-secondary block mb-1">
-            {t('giftForm.photoLabel')}
-          </label>
-          {imageUrl ? (
-            <div className="relative inline-block border border-border rounded-lg overflow-hidden group">
-              <img
-                src={imageUrl}
-                alt="Gift preview"
-                className="w-24 h-24 object-cover"
-              />
-              <button
-                type="button"
-                onClick={handleRemoveImage}
-                className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                title={t('giftForm.removePhoto')}
-              >
-                <Trash2 className="w-4 h-4 text-white" />
-              </button>
-            </div>
-          ) : (
-            <div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-                id="gift-photo-input"
-              />
-              <label
-                htmlFor="gift-photo-input"
-                className="inline-flex items-center gap-2 px-3 py-2 border border-dashed border-border rounded-lg text-xs text-secondary hover:text-primary hover:border-primary/40 cursor-pointer transition-colors bg-canvas"
-              >
-                <ImageIcon className="w-4 h-4" />
-                <span>{isProcessingImage ? t('giftForm.optimizingPhoto') : t('giftForm.uploadPhoto')}</span>
-              </label>
-            </div>
-          )}
-        </div>
+          {/* Local Image Upload */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[13px] font-medium text-primary">
+              {t('giftForm.photoLabel')}
+            </span>
+            {imageUrl ? (
+              <div className="relative inline-block w-28 h-28 border border-border rounded-md overflow-hidden group">
+                <img
+                  src={imageUrl}
+                  alt="Gift preview"
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => setImageUrl(undefined)}
+                  className="absolute inset-0 bg-[#292E29]/55 text-inverse flex items-center justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+                  aria-label={t('giftForm.removePhoto')}
+                  title={t('giftForm.removePhoto')}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="gift-photo-input"
+                />
+                <label
+                  htmlFor="gift-photo-input"
+                  className="inline-flex items-center gap-2 px-3.5 py-2.5 border border-dashed border-border rounded-md text-[13px] text-secondary hover:text-primary hover:border-green-300 cursor-pointer transition-colors bg-surface-soft/70"
+                >
+                  <ImageIcon className="w-4 h-4 text-green-700" />
+                  <span>{isProcessingImage ? t('giftForm.optimizingPhoto') : t('giftForm.uploadPhoto')}</span>
+                </label>
+              </div>
+            )}
+          </div>
 
-        <div>
-          <label htmlFor="gift-status-select" className="text-xs font-medium text-secondary block mb-1">
-            {t('giftForm.statusLabel')}
-          </label>
-          <select
-            id="gift-status-select"
+          <Select
+            label={t('giftForm.statusLabel')}
             value={status}
             onChange={(e) => setStatus(e.target.value as GiftStatus)}
-            className="w-full bg-surface border border-border text-primary text-xs rounded-md p-2 focus:outline-none focus:border-primary/60 cursor-pointer"
           >
             <option value="idea">{t('giftForm.statusOptionIdea')}</option>
             <option value="bought">{t('giftForm.statusOptionBought')}</option>
             <option value="given">{t('giftForm.statusOptionGiven')}</option>
             <option value="archived">{t('giftForm.statusOptionArchived')}</option>
-          </select>
-        </div>
+          </Select>
 
-        <div className="flex items-center justify-end gap-2 pt-3 border-t border-border-subtle">
-          <Button type="button" variant="ghost" onClick={onClose}>
-            {t('common.cancel')}
-          </Button>
-          <Button type="submit" variant="primary">
-            {initialGift ? t('giftForm.updateGift') : t('giftForm.saveGift')}
-          </Button>
-        </div>
-      </form>
-    </Modal>
+          <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-border">
+            <Button type="button" variant="ghost" onClick={handleAttemptClose}>
+              {t('common.cancel')}
+            </Button>
+            <Button type="submit" variant="primary">
+              {initialGift ? t('giftForm.updateGift') : t('giftForm.saveGift')}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={showUnsavedConfirm}
+        onClose={() => setShowUnsavedConfirm(false)}
+        onConfirm={() => {
+          setShowUnsavedConfirm(false);
+          onClose();
+        }}
+        title={t('personForm.unsavedTitle')}
+        description={t('personForm.unsavedDesc')}
+        cancelLabel={t('personForm.keepEditing')}
+        confirmLabel={t('personForm.discardChanges')}
+      />
+    </>
   );
 };

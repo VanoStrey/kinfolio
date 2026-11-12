@@ -1,15 +1,20 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, SlidersHorizontal, UserPlus, RotateCcw, Trash2 } from 'lucide-react';
+import { Plus, UserPlus, RotateCcw, Trash2 } from 'lucide-react';
 import { Person, SortOption } from '../../types/person';
 import { PersonCard } from './PersonCard';
 import { Button } from '../common/Button';
+import { SearchInput } from '../common/SearchInput';
+import { Select } from '../common/Select';
 import { EmptyState } from '../common/EmptyState';
+import { Skeleton } from '../common/Skeleton';
+import { PageHeader } from '../layout/PageHeader';
 import { useTranslation } from '../../i18n/LanguageContext';
 
 interface PersonListProps {
   people: Person[];
   deletedPeople?: Person[];
   giftCounts?: Record<string, number>;
+  loading?: boolean;
   onSelectPerson: (personId: string) => void;
   onAddPerson: () => void;
   onRestorePerson?: (personId: string) => void;
@@ -20,6 +25,7 @@ export const PersonList: React.FC<PersonListProps> = ({
   people,
   deletedPeople = [],
   giftCounts = {},
+  loading = false,
   onSelectPerson,
   onAddPerson,
   onRestorePerson,
@@ -34,13 +40,13 @@ export const PersonList: React.FC<PersonListProps> = ({
     const listToFilter = currentTab === 'active' ? people : deletedPeople;
     let result = [...listToFilter];
 
-    // Search filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
         (p) =>
           p.name.toLowerCase().includes(q) ||
           p.relationship?.toLowerCase().includes(q) ||
+          p.bio?.toLowerCase().includes(q) ||
           p.food.allergies.some((a) => a.toLowerCase().includes(q)) ||
           p.preferences.brands.some((b) => b.toLowerCase().includes(q)) ||
           p.preferences.scents.some((s) => s.toLowerCase().includes(q)) ||
@@ -50,7 +56,6 @@ export const PersonList: React.FC<PersonListProps> = ({
       );
     }
 
-    // Sorting
     result.sort((a, b) => {
       switch (sortBy) {
         case 'updated-desc':
@@ -68,110 +73,105 @@ export const PersonList: React.FC<PersonListProps> = ({
   }, [people, deletedPeople, currentTab, searchQuery, sortBy, locale]);
 
   return (
-    <div className="space-y-6">
-      {/* Top Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
-        <div>
-          <h2 className="text-xl font-bold tracking-tight text-primary">{t('personList.title')}</h2>
-          <p className="text-xs text-secondary mt-1">
-            {t('personList.subtitle')}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {people.length === 0 && onLoadDemoData && (
+    <div className="space-y-7">
+      <PageHeader
+        title={t('personList.title')}
+        subtitle={t('personList.subtitle')}
+        action={
+          <>
+            {people.length === 0 && !loading && onLoadDemoData && (
+              <Button size="md" variant="secondary" onClick={onLoadDemoData}>
+                {t('personList.loadSampleProfiles')}
+              </Button>
+            )}
             <Button
               size="md"
-              variant="secondary"
-              onClick={onLoadDemoData}
+              variant="primary"
+              onClick={onAddPerson}
+              icon={<Plus className="w-4 h-4" />}
             >
-              {t('personList.loadSampleProfiles')}
+              {t('personList.addPerson')}
             </Button>
-          )}
+          </>
+        }
+      />
 
-          <Button
-            variant="primary"
-            onClick={onAddPerson}
-            icon={<Plus className="w-4 h-4" />}
-          >
-            {t('personList.addPerson')}
-          </Button>
-        </div>
-      </div>
-
-      {/* Filter & View Tabs (Active vs Trash) */}
+      {/* Search & Filter Toolbar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Active / Trash toggle if deleted people exist */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1 min-w-0">
           {deletedPeople.length > 0 && (
-            <div className="flex items-center bg-surface border border-border p-1 rounded-lg text-xs">
+            <div className="inline-flex items-center bg-surface-soft border border-border p-1 rounded-full self-start shrink-0">
               <button
+                type="button"
                 onClick={() => setCurrentTab('active')}
-                className={`px-3 py-1 rounded text-xs transition-colors ${
+                className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-[background-color,color] duration-[180ms] ${
                   currentTab === 'active'
-                    ? 'bg-canvas text-primary font-semibold border border-border-subtle shadow-subtle'
+                    ? 'bg-surface-green text-green-900 font-semibold shadow-soft'
                     : 'text-secondary hover:text-primary'
                 }`}
               >
                 {t('personList.activeTab')} ({people.length})
               </button>
               <button
+                type="button"
                 onClick={() => setCurrentTab('trash')}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs transition-colors ${
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-[background-color,color] duration-[180ms] ${
                   currentTab === 'trash'
-                    ? 'bg-canvas text-primary font-semibold border border-border-subtle shadow-subtle'
+                    ? 'bg-surface-green text-green-900 font-semibold shadow-soft'
                     : 'text-secondary hover:text-primary'
                 }`}
               >
-                <Trash2 className="w-3 h-3 text-secondary" />
+                <Trash2 className="w-3.5 h-3.5" />
                 <span>{t('personList.trashTab')} ({deletedPeople.length})</span>
               </button>
             </div>
           )}
 
-          {/* Search bar */}
-          <div className="relative flex-1 min-w-[240px]">
-            <Search className="w-4 h-4 text-secondary absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
+          <div className="flex-1 max-w-md min-w-0">
+            <SearchInput
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={setSearchQuery}
               placeholder={t('personList.searchPlaceholder')}
-              className="w-full bg-surface border border-border text-primary text-xs rounded-md pl-9 pr-8 py-2 placeholder:text-muted focus:outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/20 transition-all"
+              clearLabel={t('common.clear')}
             />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-secondary hover:text-primary"
-                aria-label={t('common.clear')}
-              >
-                ×
-              </button>
-            )}
           </div>
         </div>
 
-        {/* Sorting options */}
-        <div className="flex items-center gap-2 text-xs text-secondary self-end sm:self-auto">
-          <SlidersHorizontal className="w-3.5 h-3.5" />
-          <span>{t('personList.sortLabel')}</span>
-          <select
+        <div className="flex items-center gap-2.5 self-end sm:self-auto shrink-0">
+          <span className="text-[13px] text-secondary">{t('personList.sortLabel')}</span>
+          <Select
+            compact
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortOption)}
             aria-label={t('personList.sortAriaLabel')}
-            className="bg-surface border border-border rounded-md px-2.5 py-1.5 text-xs text-primary focus:outline-none focus:border-primary/60 cursor-pointer"
           >
             <option value="updated-desc">{t('personList.sortUpdated')}</option>
             <option value="name-asc">{t('personList.sortName')}</option>
             <option value="relationship-asc">{t('personList.sortRelationship')}</option>
-          </select>
+          </Select>
         </div>
       </div>
 
-      {/* Grid of People Cards */}
-      {currentTab === 'active' ? (
+      {/* Loading Skeletons */}
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-surface border border-border rounded-lg p-5 space-y-4">
+              <div className="flex items-center gap-3.5">
+                <Skeleton className="w-11 h-11 rounded-lg" />
+                <div className="space-y-2 flex-1">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              </div>
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-3/4" />
+            </div>
+          ))}
+        </div>
+      ) : currentTab === 'active' ? (
         filteredAndSortedPeople.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredAndSortedPeople.map((person) => (
               <PersonCard
                 key={person.id}
@@ -183,7 +183,7 @@ export const PersonList: React.FC<PersonListProps> = ({
           </div>
         ) : (
           <EmptyState
-            icon={<UserPlus className="w-5 h-5 text-secondary" />}
+            icon={<UserPlus className="w-5 h-5 text-green-700" />}
             title={searchQuery ? t('personList.noMatchesTitle') : t('personList.noPeopleTitle')}
             description={
               searchQuery
@@ -192,42 +192,47 @@ export const PersonList: React.FC<PersonListProps> = ({
             }
             action={
               searchQuery ? (
-                <Button size="sm" variant="secondary" onClick={() => setSearchQuery('')}>
+                <Button size="md" variant="secondary" onClick={() => setSearchQuery('')}>
                   {t('personList.resetSearch')}
                 </Button>
               ) : (
-                <div className="flex items-center gap-2">
-                  <Button size="sm" variant="primary" onClick={onAddPerson} icon={<Plus className="w-3.5 h-3.5" />}>
+                <>
+                  <Button
+                    size="md"
+                    variant="primary"
+                    onClick={onAddPerson}
+                    icon={<Plus className="w-4 h-4" />}
+                  >
                     {t('personList.addFirstPerson')}
                   </Button>
                   {onLoadDemoData && (
-                    <Button size="sm" variant="secondary" onClick={onLoadDemoData}>
+                    <Button size="md" variant="secondary" onClick={onLoadDemoData}>
                       {t('personList.loadSampleProfiles')}
                     </Button>
                   )}
-                </div>
+                </>
               )
             }
           />
         )
       ) : (
         /* Trash Tab */
-        <div className="space-y-3">
-          <div className="bg-canvas border border-border-subtle p-3 rounded-lg text-xs text-secondary flex items-center justify-between">
-            <span>{t('personList.trashBanner')}</span>
+        <div className="space-y-4">
+          <div className="bg-surface-soft border border-border px-4 py-3 rounded-md text-[13px] text-secondary">
+            {t('personList.trashBanner')}
           </div>
 
           {filteredAndSortedPeople.length > 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {filteredAndSortedPeople.map((person) => (
                 <div
                   key={person.id}
-                  className="bg-surface border border-border rounded-xl p-4 flex items-center justify-between gap-4"
+                  className="bg-surface border border-border rounded-lg p-4 flex items-center justify-between gap-4"
                 >
                   <div>
-                    <h4 className="text-sm font-semibold text-primary">{person.name}</h4>
+                    <h4 className="text-[15px] font-semibold text-primary">{person.name}</h4>
                     {person.relationship && (
-                      <p className="text-xs text-secondary">{person.relationship}</p>
+                      <p className="text-[13px] text-secondary">{person.relationship}</p>
                     )}
                   </div>
                   {onRestorePerson && (
@@ -244,7 +249,7 @@ export const PersonList: React.FC<PersonListProps> = ({
               ))}
             </div>
           ) : (
-            <p className="text-xs text-muted text-center py-8">{t('personList.trashEmpty')}</p>
+            <p className="text-[14px] text-muted text-center py-8">{t('personList.trashEmpty')}</p>
           )}
         </div>
       )}

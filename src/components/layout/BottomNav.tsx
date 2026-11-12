@@ -44,28 +44,41 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-surface/95 backdrop-blur-md border-t border-border px-4 py-2 flex items-center justify-around pb-safe">
+    <nav
+      aria-label="Mobile navigation"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-surface/95 backdrop-blur-md border-t border-border px-2 pt-1.5 pb-safe flex items-center justify-around"
+    >
       {navItems.map((item) => {
         const Icon = item.icon;
-        const isActive = activeView === item.id || (item.id === 'people' && activeView === 'person-detail');
+        const isActive =
+          activeView === item.id ||
+          (item.id === 'people' && activeView === 'person-detail');
 
         return (
           <button
             key={item.id}
+            type="button"
             onClick={() => onNavigate(item.id)}
-            className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg relative min-w-[56px] transition-colors ${
-              isActive ? 'text-primary font-semibold' : 'text-secondary hover:text-primary'
+            aria-current={isActive ? 'page' : undefined}
+            className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-md min-w-[64px] min-h-[44px] transition-[background-color,color] duration-[180ms] focus:outline-none focus-visible:ring-2 focus-visible:ring-green-700/40 ${
+              isActive
+                ? 'bg-surface-green/80 text-green-900 font-semibold'
+                : 'text-secondary font-medium hover:text-primary'
             }`}
           >
             <div className="relative">
-              <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.2]' : 'stroke-[1.6]'}`} />
+              <Icon
+                className={`w-[19px] h-[19px] ${
+                  isActive ? 'text-green-700 stroke-[2.1]' : 'stroke-[1.75]'
+                }`}
+              />
               {item.badge !== undefined && item.badge > 0 && (
-                <span className="absolute -top-1 -right-2 text-[9px] min-w-3.5 h-3.5 px-0.5 rounded-full bg-accent text-accent-dark flex items-center justify-center font-bold">
+                <span className="absolute -top-1.5 -right-2.5 text-[10px] min-w-[16px] h-[16px] px-1 rounded-full bg-green-700 text-inverse flex items-center justify-center font-semibold">
                   {item.badge}
                 </span>
               )}
             </div>
-            <span className="text-[10px] mt-1 tracking-tight">{item.label}</span>
+            <span className="text-[11px] mt-0.5 leading-tight">{item.label}</span>
           </button>
         );
       })}

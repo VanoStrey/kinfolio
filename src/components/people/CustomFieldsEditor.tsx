@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { CustomField } from '../../types/person';
 import { Button } from '../common/Button';
+import { IconButton } from '../common/IconButton';
 import { useTranslation } from '../../i18n/LanguageContext';
 
 interface CustomFieldsEditorProps {
@@ -41,13 +42,13 @@ export const CustomFieldsEditor: React.FC<CustomFieldsEditorProps> = ({ fields, 
   };
 
   return (
-    <div className="bg-surface border border-border rounded-xl p-5 shadow-subtle space-y-4">
-      <div className="flex items-center justify-between pb-2 border-b border-border-subtle">
+    <section className="bg-surface border border-border rounded-lg p-5 sm:p-6 space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
         <div>
-          <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider">
+          <h3 className="text-[12px] font-semibold text-secondary uppercase tracking-[0.06em]">
             {t('customFields.heading')}
           </h3>
-          <p className="text-[11px] text-muted mt-0.5">
+          <p className="text-[13px] text-secondary mt-1 leading-[1.45]">
             {t('customFields.subheading')}
           </p>
         </div>
@@ -56,8 +57,9 @@ export const CustomFieldsEditor: React.FC<CustomFieldsEditorProps> = ({ fields, 
           <Button
             size="sm"
             variant="secondary"
+            className="self-start sm:self-auto shrink-0"
             onClick={() => setIsAdding(true)}
-            icon={<Plus className="w-3 h-3" />}
+            icon={<Plus className="w-3.5 h-3.5" />}
           >
             {t('customFields.addField')}
           </Button>
@@ -65,41 +67,44 @@ export const CustomFieldsEditor: React.FC<CustomFieldsEditorProps> = ({ fields, 
       </div>
 
       {/* Field List */}
-      <div className="space-y-2.5">
+      <div className="divide-y divide-border">
         {fields.length > 0 ? (
           fields.map((field) => (
             <div
               key={field.id}
-              className="flex items-center gap-2 bg-canvas border border-border-subtle p-2.5 rounded-lg text-xs"
+              className="py-3 first:pt-1 last:pb-1 flex flex-col sm:flex-row sm:items-center gap-2.5"
             >
               <input
                 type="text"
                 value={field.label}
                 onChange={(e) => handleUpdateField(field.id, e.target.value, field.value)}
                 placeholder={t('customFields.labelPlaceholder')}
-                className="w-1/3 bg-surface border border-border rounded px-2 py-1 text-primary font-medium text-xs focus:outline-none focus:border-primary/60"
+                aria-label={t('customFields.labelPlaceholder')}
+                className="sm:w-1/3 h-10 bg-surface-soft/60 border border-border rounded-md px-3 text-primary font-medium text-[13.5px] focus:outline-none focus:border-green-700 focus:bg-surface"
               />
-              <span className="text-secondary">:</span>
               <input
                 type="text"
                 value={field.value}
                 onChange={(e) => handleUpdateField(field.id, field.label, e.target.value)}
                 placeholder={t('customFields.valuePlaceholder')}
-                className="flex-1 bg-surface border border-border rounded px-2 py-1 text-primary text-xs focus:outline-none focus:border-primary/60"
+                aria-label={t('customFields.valuePlaceholder')}
+                className="flex-1 h-10 bg-surface-soft/60 border border-border rounded-md px-3 text-primary text-[14px] focus:outline-none focus:border-green-700 focus:bg-surface"
               />
-              <button
-                type="button"
-                onClick={() => handleRemoveField(field.id)}
-                className="text-secondary hover:text-red-600 p-1 rounded hover:bg-surface transition-colors"
-                title={t('customFields.deleteFieldTitle')}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <div className="self-end sm:self-auto">
+                <IconButton
+                  label={t('customFields.deleteFieldTitle')}
+                  variant="danger"
+                  size="sm"
+                  onClick={() => handleRemoveField(field.id)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </IconButton>
+              </div>
             </div>
           ))
         ) : (
           !isAdding && (
-            <p className="text-xs text-muted py-2 italic">
+            <p className="text-[14px] text-muted py-2">
               {t('customFields.empty')}
             </p>
           )
@@ -108,15 +113,17 @@ export const CustomFieldsEditor: React.FC<CustomFieldsEditorProps> = ({ fields, 
 
       {/* New field row */}
       {isAdding && (
-        <div className="bg-canvas border border-border rounded-lg p-3 space-y-2 animate-in fade-in">
-          <span className="text-xs font-semibold text-primary block">{t('customFields.newMeasurement')}</span>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="bg-surface-soft border border-border rounded-md p-4 space-y-3">
+          <span className="text-[13px] font-semibold text-primary block">
+            {t('customFields.newMeasurement')}
+          </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <input
               type="text"
               placeholder={t('customFields.newLabelPlaceholder')}
               value={newLabel}
               onChange={(e) => setNewLabel(e.target.value)}
-              className="bg-surface border border-border rounded px-2.5 py-1.5 text-xs text-primary focus:outline-none focus:border-primary/60"
+              className="h-10 bg-surface border border-border rounded-md px-3 text-[14px] text-primary placeholder:text-muted focus:outline-none focus:border-green-700"
               autoFocus
             />
             <input
@@ -127,7 +134,7 @@ export const CustomFieldsEditor: React.FC<CustomFieldsEditorProps> = ({ fields, 
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleAddField();
               }}
-              className="bg-surface border border-border rounded px-2.5 py-1.5 text-xs text-primary focus:outline-none focus:border-primary/60"
+              className="h-10 bg-surface border border-border rounded-md px-3 text-[14px] text-primary placeholder:text-muted focus:outline-none focus:border-green-700"
             />
           </div>
           <div className="flex items-center justify-end gap-2 pt-1">
@@ -155,6 +162,6 @@ export const CustomFieldsEditor: React.FC<CustomFieldsEditorProps> = ({ fields, 
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 };

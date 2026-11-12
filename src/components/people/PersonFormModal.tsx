@@ -1,8 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Camera, Trash2 } from 'lucide-react';
 import { Person, CreatePersonInput, UpdatePersonInput } from '../../types/person';
+import { processImageFile } from '../../services/imageService';
 import { Modal } from '../common/Modal';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 import { Input } from '../common/Input';
+import { Textarea } from '../common/Textarea';
 import { Button } from '../common/Button';
+import { PersonAvatar } from './PersonAvatar';
 import { useTranslation } from '../../i18n/LanguageContext';
 
 interface PersonFormModalProps {
@@ -22,17 +27,25 @@ export const PersonFormModal: React.FC<PersonFormModalProps> = ({
   const [name, setName] = useState('');
   const [relationship, setRelationship] = useState('');
   const [birthday, setBirthday] = useState('');
+  const [bio, setBio] = useState('');
+  const [photoUrl, setPhotoUrl] = useState<string | undefined>(undefined);
   const [clothingSize, setClothingSize] = useState('');
   const [shoeSize, setShoeSize] = useState('');
   const [ringSize, setRingSize] = useState('');
   const [allergiesInput, setAllergiesInput] = useState('');
   const [error, setError] = useState('');
+  const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
+  const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (initialPerson) {
       setName(initialPerson.name);
       setRelationship(initialPerson.relationship || '');
       setBirthday(initialPerson.birthday || '');
+      setBio(initialPerson.bio || '');
+      setPhotoUrl(initialPerson.photoUrl);
       setClothingSize(initialPerson.details?.clothingSize || '');
       setShoeSize(initialPerson.details?.shoeSize || '');
       setRingSize(initialPerson.details?.ringSize || '');
@@ -41,13 +54,67 @@ export const PersonFormModal: React.FC<PersonFormModalProps> = ({
       setName('');
       setRelationship('');
       setBirthday('');
+      setBio('');
+      setPhotoUrl(undefined);
       setClothingSize('');
       setShoeSize('');
       setRingSize('');
       setAllergiesInput('');
     }
     setError('');
+    setShowUnsavedConfirm(false);
   }, [initialPerson, isOpen]);
+
+  const isDirty = (() => {
+    if (!isOpen) return false;
+    if (initialPerson) {
+      return (
+        name !== initialPerson.name ||
+        relationship !== (initialPerson.relationship || '') ||
+        birthday !== (initialPerson.birthday || '') ||
+        bio !== (initialPerson.bio || '') ||
+        photoUrl !== initialPerson.photoUrl ||
+        clothingSize !== (initialPerson.details?.clothingSize || '') ||
+        shoeSize !== (initialPerson.details?.shoeSize || '') ||
+        ringSize !== (initialPerson.details?.ringSize || '') ||
+        allergiesInput !== (initialPerson.food?.allergies?.join(', ') || '')
+      );
+    }
+    return Boolean(
+      name.trim() ||
+        relationship.trim() ||
+        birthday.trim() ||
+        bio.trim() ||
+        photoUrl ||
+        clothingSize.trim() ||
+        shoeSize.trim() ||
+        ringSize.trim() ||
+        allergiesInput.trim()
+    );
+  })();
+
+  const handleAttemptClose = () => {
+    if (isDirty) {
+      setShowUnsavedConfirm(true);
+    } else {
+      onClose();
+    }
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsProcessingPhoto(true);
+      const compressed = await processImageFile(file, 400, 0.85);
+      setPhotoUrl(compressed);
+    } catch (err: any) {
+      setError(err.message || 'Failed to process image');
+    } finally {
+      setIsProcessingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,10 +132,13 @@ export const PersonFormModal: React.FC<PersonFormModalProps> = ({
       name: name.trim(),
       relationship: relationship.trim() || undefined,
       birthday: birthday.trim() || undefined,
+      bio: bio.trim() || undefined,
+      photoUrl: photoUrl || undefined,
       details: {
         clothingSize: clothingSize.trim() || undefined,
         shoeSize: shoeSize.trim() || undefined,
         ringSize: ringSize.trim() || undefined,
+        height: initialPerson?.details?.height,
         customFields: initialPerson?.details?.customFields || [],
       },
       food: {
@@ -93,69 +163,118 @@ export const PersonFormModal: React.FC<PersonFormModalProps> = ({
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={initialPerson ? t('personForm.editTitle') : t('personForm.addTitle')}
-      subtitle={t('personForm.subtitle')}
-      maxWidth="md"
-    >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          label={t('personForm.nameLabel')}
-          placeholder={t('personForm.namePlaceholder')}
-          value={name}
-          onChange={(e) => {
-            setName(e.target.value);
-            if (error) setError('');
-          }}
-          error={error}
-          autoFocus
-        />
+    <>
+      <Modal
+        isOpen={isOpen}
+        onClose={handleAttemptClose}
+        title={initialPerson ? t('personForm.editTitle') : t('personForm.addTitle')}
+        subtitle={t('personForm.subtitle')}
+        maxWidth="md"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Avatar Photo Upload Row */}
+          <div className="flex items-center gap-4 pb-2">
+            <PersonAvatar name={name || '?'} photoUrl={photoUrl} size="lg" />
+            <div className="space-y-1.5">
+              <span className="text-[13px] font-medium text-primary block">
+                {t('personForm.photoLabel')}
+              </span>
+              <div className="flex items-center gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                  id="person-photo-input"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  disabled={isProcessingPhoto}
+                  onClick={() => fileInputRef.current?.click()}
+                  icon={<Camera className="w-3.5 h-3.5" />}
+                >
+                  {photoUrl ? t('personForm.changePhoto') : t('personForm.uploadPhoto')}
+                </Button>
+                {photoUrl && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setPhotoUrl(undefined)}
+                    icon={<Trash2 className="w-3.5 h-3.5 text-danger" />}
+                  >
+                    {t('personForm.removePhoto')}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input
-            label={t('personForm.relationshipLabel')}
-            placeholder={t('personForm.relationshipPlaceholder')}
-            value={relationship}
-            onChange={(e) => setRelationship(e.target.value)}
+            label={t('personForm.nameLabel')}
+            placeholder={t('personForm.namePlaceholder')}
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (error) setError('');
+            }}
+            error={error}
+            autoFocus
           />
 
-          <Input
-            label={t('personForm.birthdayLabel')}
-            placeholder={t('personForm.birthdayPlaceholder')}
-            value={birthday}
-            onChange={(e) => setBirthday(e.target.value)}
-          />
-        </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input
+              label={t('personForm.relationshipLabel')}
+              placeholder={t('personForm.relationshipPlaceholder')}
+              value={relationship}
+              onChange={(e) => setRelationship(e.target.value)}
+            />
 
-        <div className="pt-2 border-t border-border-subtle">
-          <label className="text-xs font-semibold text-secondary uppercase tracking-wider block mb-2">
-            {t('personForm.keySizesLabel')}
-          </label>
-          <div className="grid grid-cols-3 gap-2">
             <Input
-              label={t('personDetail.clothingLabel')}
-              placeholder={t('personDetail.clothingPlaceholder')}
-              value={clothingSize}
-              onChange={(e) => setClothingSize(e.target.value)}
-            />
-            <Input
-              label={t('personDetail.shoeLabel')}
-              placeholder={t('personDetail.shoePlaceholder')}
-              value={shoeSize}
-              onChange={(e) => setShoeSize(e.target.value)}
-            />
-            <Input
-              label={t('personDetail.ringLabel')}
-              placeholder={t('personDetail.ringPlaceholder')}
-              value={ringSize}
-              onChange={(e) => setRingSize(e.target.value)}
+              label={t('personForm.birthdayLabel')}
+              placeholder={t('personForm.birthdayPlaceholder')}
+              value={birthday}
+              onChange={(e) => setBirthday(e.target.value)}
             />
           </div>
-        </div>
 
-        <div>
+          <Textarea
+            label={t('personForm.bioLabel')}
+            placeholder={t('personForm.bioPlaceholder')}
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            rows={2}
+          />
+
+          <div className="pt-3 border-t border-border">
+            <span className="text-[12px] font-semibold text-secondary uppercase tracking-wider block mb-2.5">
+              {t('personForm.keySizesLabel')}
+            </span>
+            <div className="grid grid-cols-3 gap-2.5">
+              <Input
+                label={t('personDetail.clothingLabel')}
+                placeholder={t('personDetail.clothingPlaceholder')}
+                value={clothingSize}
+                onChange={(e) => setClothingSize(e.target.value)}
+              />
+              <Input
+                label={t('personDetail.shoeLabel')}
+                placeholder={t('personDetail.shoePlaceholder')}
+                value={shoeSize}
+                onChange={(e) => setShoeSize(e.target.value)}
+              />
+              <Input
+                label={t('personDetail.ringLabel')}
+                placeholder={t('personDetail.ringPlaceholder')}
+                value={ringSize}
+                onChange={(e) => setRingSize(e.target.value)}
+              />
+            </div>
+          </div>
+
           <Input
             label={t('personForm.allergiesLabel')}
             placeholder={t('personForm.allergiesPlaceholder')}
@@ -163,17 +282,30 @@ export const PersonFormModal: React.FC<PersonFormModalProps> = ({
             onChange={(e) => setAllergiesInput(e.target.value)}
             hint={t('personForm.allergiesHint')}
           />
-        </div>
 
-        <div className="flex items-center justify-end gap-2 pt-3 border-t border-border-subtle">
-          <Button type="button" variant="ghost" onClick={onClose}>
-            {t('common.cancel')}
-          </Button>
-          <Button type="submit" variant="primary">
-            {initialPerson ? t('personForm.saveChanges') : t('personForm.createPerson')}
-          </Button>
-        </div>
-      </form>
-    </Modal>
+          <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-border">
+            <Button type="button" variant="ghost" onClick={handleAttemptClose}>
+              {t('common.cancel')}
+            </Button>
+            <Button type="submit" variant="primary">
+              {initialPerson ? t('personForm.saveChanges') : t('personForm.createPerson')}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={showUnsavedConfirm}
+        onClose={() => setShowUnsavedConfirm(false)}
+        onConfirm={() => {
+          setShowUnsavedConfirm(false);
+          onClose();
+        }}
+        title={t('personForm.unsavedTitle')}
+        description={t('personForm.unsavedDesc')}
+        cancelLabel={t('personForm.keepEditing')}
+        confirmLabel={t('personForm.discardChanges')}
+      />
+    </>
   );
 };
